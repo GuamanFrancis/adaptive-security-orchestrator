@@ -9,9 +9,11 @@ import re
 import secrets
 import sqlite3
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
+from urllib.parse import urlparse
 
 import httpx
 from dotenv import load_dotenv
@@ -36,15 +38,28 @@ SESSION_AGE = 7 * 24 * 3600
 rate_lock = Lock()
 attempts = {}
 
+
+def foundry_configured():
+    parsed = urlparse(ENDPOINT)
+    return bool(API_KEY and parsed.scheme == 'https' and parsed.hostname and 'your-resource' not in parsed.hostname.lower() and parsed.path.endswith('/providers/blackforestlabs/v1/flux-2-pro'))
+
 app = FastAPI(title='Flux Secure Studio', docs_url=None, redoc_url=None, openapi_url=None)
 app.mount('/assets', StaticFiles(directory=FRONTEND / 'assets', check_dir=False), name='assets')
 
 
+@contextmanager
 def connect():
     db = sqlite3.connect(DB)
     db.row_factory = sqlite3.Row
     db.execute('PRAGMA foreign_keys = ON')
-    return db
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 with connect() as db:
@@ -138,7 +153,7 @@ def home():
 
 @app.get('/health')
 def health():
-    return {'status': 'ok', 'foundry_configured': bool(API_KEY and ENDPOINT)}
+    return {'status': 'ok', 'foundry_configured': foundry_configured()}
 
 
 @app.post('/api/register')
@@ -244,7 +259,6 @@ async def checked_reference(upload):
 @app.post('/api/generate')
 async def generate(request: Request, prompt: str = Form(...), width: int = Form(1024), height: int = Form(1024), seed: str = Form(''), reference1: UploadFile = File(None), reference2: UploadFile = File(None)):
     user = current_session(request, csrf=True)
-    limit(('generate', user['user_id']), 8, 3600)
     if not 1 <= len(prompt.strip()) <= 2000:
         raise HTTPException(422, 'Prompt de 1 a 2000 caracteres requerido.')
     if width < 256 or height < 256 or width > 2048 or height > 2048 or width % 16 or height % 16 or width * height > 4_194_304:
@@ -256,8 +270,9 @@ async def generate(request: Request, prompt: str = Form(...), width: int = Form(
     except ValueError:
         raise HTTPException(422, 'Seed inválida.')
     refs = [await checked_reference(reference1), await checked_reference(reference2)]
-    if not API_KEY or not ENDPOINT:
-        raise HTTPException(503, 'Foundry aún no está configurado.')
+    if not foundry_configured():
+        raise HTTPException(503, 'Foundry no está configurado con una clave nueva y un endpoint válido.')
+    limit(('generate', user['user_id']), 8, 3600)
     payload = {'model': 'FLUX.2-pro', 'prompt': prompt.strip(), 'width': width, 'height': height, 'output_format': 'png', 'seed': value_seed, 'safety_tolerance': 0}
     for index, ref in enumerate(refs):
         if ref:
@@ -273,9 +288,22 @@ async def generate(request: Request, prompt: str = Form(...), width: int = Form(
         image = Image.open(io.BytesIO(raw))
         image.verify()
         image = Image.open(io.BytesIO(raw)).convert('RGB')
-    except (httpx.HTTPError, KeyError, IndexError, ValueError, UnidentifiedImageError, OSError):
+    except httpx.HTTPStatusError as error:
+        status = error.response.status_code
+        audit('generation_failed', 502, user['user_id'], f'foundry_http_{status}')
+        if status in (401, 403):
+            raise HTTPException(502, 'Foundry rechazó la credencial. Configura una clave nueva válida.')
+        if status == 429:
+            raise HTTPException(503, 'Foundry alcanzó su límite de solicitudes o cuota. Intenta más tarde.')
+        if status == 400:
+            raise HTTPException(502, 'Foundry rechazó los parámetros de generación. Revisa el endpoint y los límites del modelo.')
+        raise HTTPException(502, f'Foundry respondió con estado {status}.')
+    except httpx.RequestError:
+        audit('generation_failed', 502, user['user_id'], 'foundry_connection')
+        raise HTTPException(502, 'No se pudo conectar con Foundry. Revisa el endpoint y la red.')
+    except (KeyError, IndexError, ValueError, UnidentifiedImageError, OSError):
         audit('generation_failed', 502, user['user_id'])
-        raise HTTPException(502, 'La generación falló. Intenta de nuevo.')
+        raise HTTPException(502, 'Foundry respondió sin una imagen válida.')
     image_id = secrets.token_urlsafe(18)
     filename = image_id + '.png'
     image.save(OUTPUTS / filename, format='PNG')

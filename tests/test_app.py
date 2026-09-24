@@ -2,6 +2,8 @@ import io
 import base64
 import secrets
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -12,10 +14,25 @@ from app import main
 
 class StudioTests(unittest.TestCase):
     def setUp(self):
+        with main.rate_lock:
+            main.attempts.clear()
+        self.temp = TemporaryDirectory()
+        self.db_patch = patch.object(main, 'DB', Path(self.temp.name) / 'test.sqlite3')
+        self.outputs_patch = patch.object(main, 'OUTPUTS', Path(self.temp.name) / 'outputs')
+        self.db_patch.start()
+        self.outputs_patch.start()
+        main.OUTPUTS.mkdir()
+        with main.connect() as db:
+            db.executescript((main.ROOT / 'migrations' / '001_initial.sql').read_text(encoding='utf-8'))
         self.a = TestClient(main.app)
         self.b = TestClient(main.app)
         self.email_a = f'{secrets.token_hex(6)}@example.test'
         self.email_b = f'{secrets.token_hex(6)}@example.test'
+
+    def tearDown(self):
+        self.outputs_patch.stop()
+        self.db_patch.stop()
+        self.temp.cleanup()
 
     def register(self, client, email):
         response = client.post('/api/register', json={'email': email, 'password': 'a strong password 123'})
@@ -83,12 +100,18 @@ class StudioTests(unittest.TestCase):
                 assert 'Authorization' in headers
                 return FakeResult()
 
-        with patch.object(main, 'API_KEY', 'test-only'), patch.object(main, 'ENDPOINT', 'https://foundry.invalid'), patch.object(main.httpx, 'AsyncClient', return_value=FakeClient()):
+        with patch.object(main, 'API_KEY', 'test-only'), patch.object(main, 'ENDPOINT', 'https://foundry.invalid/providers/blackforestlabs/v1/flux-2-pro?api-version=preview'), patch.object(main.httpx, 'AsyncClient', return_value=FakeClient()):
             response = self.a.post('/api/generate', data={'prompt': 'Blue moon', 'width': 512, 'height': 512}, headers={'x-csrf-token': csrf})
         self.assertEqual(response.status_code, 200, response.text)
         image_id = response.json()['id']
         self.assertEqual(self.a.get(f'/api/images/{image_id}/file').status_code, 200)
         self.assertEqual(self.a.get('/api/images').json()['images'][0]['prompt'], 'Blue moon')
+
+    def test_placeholder_endpoint_is_reported_as_configuration_error(self):
+        csrf = self.register(self.a, self.email_a)
+        with patch.object(main, 'API_KEY', 'test-only'), patch.object(main, 'ENDPOINT', 'https://YOUR-RESOURCE.cognitiveservices.azure.com/providers/blackforestlabs/v1/flux-2-pro?api-version=preview'):
+            response = self.a.post('/api/generate', data={'prompt': 'Blue moon', 'width': 512, 'height': 512}, headers={'x-csrf-token': csrf})
+        self.assertEqual(response.status_code, 503, response.text)
 
 
 if __name__ == '__main__':

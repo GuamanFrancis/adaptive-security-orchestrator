@@ -23,3 +23,5 @@ Estado: primera versión local, 24 de septiembre de 2026.
 ## Controles y límites
 
 Hay validación de entradas, autorización por dueño de imagen, CSRF, control de origen, límites básicos y cabeceras de seguridad. Los límites están en memoria y el almacenamiento es local; deben reemplazarse o reforzarse para despliegue distribuido. La configuración de DNS, CDN, WAF, rate limiting de infraestructura y telemetría de plataforma está pendiente de elegir proveedor y desplegar staging.
+
+Las referencias se optimizan en el navegador y se validan de nuevo en el backend. Las pruebas automatizadas usan bases de datos temporales, separadas de las cuentas locales.

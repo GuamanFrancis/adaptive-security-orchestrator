@@ -1,5 +1,6 @@
 import { FormEvent, ReactNode, useCallback, useEffect, useState } from 'react';
 import { ApiError, ImageRecord, request, Session } from './api';
+import { prepareReference } from './image';
 import { navigate, Route, useRoute } from './router';
 
 const inspiration = [
@@ -55,10 +56,12 @@ function CreatePage({ session, initialPrompt }: { session: Session; initialPromp
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (width * height > 4_194_304) { setMessage('La combinación de dimensiones es demasiado grande.'); return; }
-    const form = new FormData(); form.set('prompt', prompt); form.set('width', String(width)); form.set('height', String(height)); form.set('seed', seed);
-    if (reference1) form.set('reference1', reference1); if (reference2) form.set('reference2', reference2);
-    setBusy(true); setMessage('Generando imagen. Esto puede tomar varios minutos…');
+    setBusy(true); setMessage('Preparando referencias…');
     try {
+      const form = new FormData(); form.set('prompt', prompt); form.set('width', String(width)); form.set('height', String(height)); form.set('seed', seed);
+      if (reference1) form.set('reference1', await prepareReference(reference1));
+      if (reference2) form.set('reference2', await prepareReference(reference2));
+      setMessage('Generando imagen. Esto puede tomar varios minutos…');
       const result = await request<{ id: string; seed: number }>('/api/generate', { method: 'POST', body: form }, session.csrf);
       setImageId(result.id); setResultSeed(result.seed); setMessage('Imagen creada y guardada en tu biblioteca.');
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Error de generación.'); }

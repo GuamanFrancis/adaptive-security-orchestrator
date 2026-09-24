@@ -36,6 +36,8 @@ python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 
 Abre `http://127.0.0.1:8000`. Sin configuración de Foundry funcionan las cuentas y el dashboard; la generación responde 503 de forma explícita.
 
+El formulario optimiza referencias JPG, PNG o WebP a JPEG de hasta 1024 px antes de enviarlas. El backend vuelve a validar el archivo y admite hasta 6 MB por referencia y 15 MB por solicitud.
+
 FastAPI sirve el build de React. Para desarrollar con Vite, ejecuta el backend en 8000 y `npm run dev` dentro de `frontend`; configura `APP_ORIGIN=http://127.0.0.1:5173` durante ese modo. En producción, `APP_ORIGIN` debe coincidir exactamente con el origen público del sitio.
 
 ## Pruebas
@@ -59,6 +61,12 @@ python -m unittest discover -s tests -v
 ## Límites antes de producción
 
 Esta es una primera versión local con esquema SQLite versionado en `migrations/001_initial.sql`. SQLite, disco local y límites en memoria requieren almacenamiento y controles compartidos para varias instancias. Antes de desplegar: rotar la clave expuesta, usar HTTPS y `COOKIE_SECURE=true`, configurar `APP_ORIGIN`, almacenamiento privado persistente, límites en el edge y copias de seguridad. El contenido generado y los prompts pueden ser sensibles; no deben publicarse como archivos estáticos. La llamada real a Foundry no se ejecuta en las pruebas locales porque requiere una clave válida y consume recursos.
+
+## Errores frecuentes
+
+- **503 Foundry no configurado:** falta una clave nueva o el endpoint es un marcador de ejemplo. Revisa `/health`, que debe indicar `foundry_configured: true` antes de generar.
+- **413 Solicitud demasiado grande:** el navegador optimiza las referencias. Si persiste, reduce el archivo original o usa uno de hasta 30 MB y 32 megapíxeles.
+- **502 de Foundry:** el mensaje distingue credencial rechazada, cuota, parámetros, conexión o respuesta sin imagen. La auditoría guarda solo la categoría y el código, nunca la clave ni la respuesta completa del proveedor.
 
 ## Próximos sprints
 
