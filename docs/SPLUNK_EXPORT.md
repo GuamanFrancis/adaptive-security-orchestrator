@@ -12,4 +12,8 @@ El backend guarda los eventos de la API y las decisiones de Jev en archivos JSON
 
 El exportador guarda un cursor por archivo en `backend/data` solo después de recibir HTTP exitoso y `code: 0`. Si Splunk rechaza un evento, la siguiente ejecución lo reintenta. Esta confirmación significa recepción por HEC, **no** indexación confirmada; la entrega es al menos una vez y puede haber duplicados ante fallos entre recepción y escritura del cursor. El cursor cuenta líneas, por lo que no se debe truncar ni rotar manualmente un archivo JSONL activo. Para operación de alto volumen se requiere un agente de logs con spool, rotación coordinada, monitoreo y confirmación de indexación.
 
-No hay una instancia Splunk ni credenciales configuradas en este repositorio; las pruebas usan un HEC simulado. La IP sí consta en los eventos de seguridad locales y se enviaría a Splunk al activar este ejercicio. El uso real requiere definir permisos y retención de esos datos.
+## Validación real en el equipo local
+
+El 24 de septiembre de 2026 se habilitó HEC en Splunk Enterprise 10.4.3 local, puerto 8088 con HTTP solo para esta demostración, y se creó un token dedicado limitado al índice `laboratorio`. El token y la URL se guardaron en `backend/.env`, excluido de Git. La búsqueda `index=laboratorio (sourcetype="flux:security" OR sourcetype="flux:jev") | stats count by sourcetype` confirmó **160 eventos de seguridad y 3 registros de Jev** indexados. Dos ejecuciones del exportador enviaron los 163 registros y una tercera envió 0 por los cursores guardados. Las pruebas automatizadas siguen usando un HEC simulado.
+
+La IP consta en los eventos de seguridad locales y también en Splunk cuando se exportan. El token no se documenta ni se sube al repositorio. Splunk puede apagarse cuando no se usa el laboratorio; los JSONL y cursores quedan para la siguiente sesión.
