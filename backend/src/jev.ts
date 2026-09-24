@@ -22,6 +22,21 @@ export interface JevDecision {
   evidence: { event_type: string; status: number; failures_10m: number };
 }
 
+function appendJevRecord(record: object): void {
+  fs.mkdirSync(path.dirname(decisionPath), { recursive: true });
+  fs.appendFileSync(decisionPath, JSON.stringify(record) + '\n', { encoding: 'utf8', mode: 0o600 });
+}
+
+export function classifyJevError(error: unknown): 'timeout' | 'rate_limit' | 'authentication' | 'upstream' | 'invalid_response' | 'network' {
+  if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) return 'timeout';
+  const message = error instanceof Error ? error.message : '';
+  if (/Jev HTTP 429|Jev HTTP 529/.test(message)) return 'rate_limit';
+  if (/Jev HTTP 401|Jev HTTP 403/.test(message)) return 'authentication';
+  if (/Jev HTTP \d{3}/.test(message)) return 'upstream';
+  if (/Invalid Jev/.test(message)) return 'invalid_response';
+  return 'network';
+}
+
 function validUnit(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1;
 }
@@ -110,9 +125,16 @@ export function maybeEvaluateSecurityEvent(event: SecurityEvent): void {
   const failures = window.failures;
 
   void evaluateWithJev(event, failures, apiKey).then((decision) => {
-    fs.mkdirSync(path.dirname(decisionPath), { recursive: true });
-    fs.appendFileSync(decisionPath, JSON.stringify(decision) + '\n', { encoding: 'utf8', mode: 0o600 });
-  }).catch(() => {
-    // Jev is advisory. Provider failure never affects the user's request.
+    appendJevRecord(decision);
+  }).catch((error: unknown) => {
+    try {
+      appendJevRecord({
+        timestamp: new Date().toISOString(), source: 'jev-integration',
+        event_type: 'jev.evaluation_failed', request_id: event.request_id,
+        error_category: classifyJevError(error),
+      });
+    } catch {
+      // Provider or local telemetry failure never affects the user's request.
+    }
   });
 }

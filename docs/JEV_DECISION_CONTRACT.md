@@ -9,6 +9,7 @@ Jev es el modelo System One de TypeSafe AI. Recibe `state` y preguntas tipadas; 
 - Jev responde un `score` de 0 a 3 y `confidence` de 0 a 1. Una puntuación de al menos 2 y confianza de al menos 0.8 produce recomendación `review`; los demás casos quedan en `observe`.
 - Las decisiones validadas se guardan en `backend/data/jev-decisions.jsonl`, junto con `request_id` para correlacionarlas con `security-events.jsonl`. Los archivos se excluyen de Git.
 - La llamada a Jev es asíncrona y tiene un plazo de cinco segundos. Un fallo de red o una respuesta inválida no bloquea la operación del usuario.
+- Los fallos se registran con una categoría (`timeout`, `rate_limit`, `authentication`, `upstream`, `invalid_response` o `network`) y `request_id`, sin incluir respuestas completas ni credenciales. El exportador de Splunk también puede enviar esos registros.
 
 ## Límite operativo
 

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { evaluateWithJev } from '../src/jev.js';
+import { evaluateWithJev, classifyJevError } from '../src/jev.js';
 import type { SecurityEvent } from '../src/telemetry.js';
 
 const event: SecurityEvent = {
@@ -29,6 +29,9 @@ assert.ok(!JSON.stringify(requestBody).includes('192.0.2.1'));
 assert.ok(!JSON.stringify(requestBody).includes('test-agent'));
 assert.equal(decision.recommendation, 'review');
 assert.equal(decision.request_id, event.request_id);
+assert.equal(classifyJevError(new Error('Jev HTTP 429')), 'rate_limit');
+assert.equal(classifyJevError(new Error('Jev HTTP 401')), 'authentication');
+assert.equal(classifyJevError(new Error('Invalid Jev answer')), 'invalid_response');
 
 await assert.rejects(() => evaluateWithJev(event, 4, 'test-key', (async () =>
   new Response(JSON.stringify({ model: 'jev-1.13.0', answers: { abuse_severity: { type: 'score', score: 99, confidence: 1 } } }), { status: 200 })) as typeof fetch));
