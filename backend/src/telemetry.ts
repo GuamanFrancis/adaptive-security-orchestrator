@@ -3,6 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Request, Response, NextFunction } from 'express';
+import { maybeEvaluateSecurityEvent } from './jev.js';
 
 export interface SecurityEvent {
   timestamp: string;
@@ -60,6 +61,7 @@ export function telemetryMiddleware(req: Request, res: Response, next: NextFunct
     try {
       fs.mkdirSync(path.dirname(telemetryPath), { recursive: true });
       fs.appendFileSync(telemetryPath, JSON.stringify(event) + '\n', { encoding: 'utf8', mode: 0o600 });
+      maybeEvaluateSecurityEvent(event);
     } catch {
       // Telemetry failure must not change the HTTP response already sent.
     }

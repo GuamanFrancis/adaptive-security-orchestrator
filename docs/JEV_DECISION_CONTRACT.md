@@ -1,30 +1,15 @@
-# Contrato propuesto para Jev
+# Jev en el estudio FLUX
 
-Jev será la capa de decisión sobre eventos de seguridad del estudio FLUX. Este documento define una interfaz de integración; **no implementa ni conecta Jev**. Falta la especificación del Jev existente del usuario para mapear su API y modelo de confianza.
+Jev es el modelo System One de TypeSafe AI. Recibe `state` y preguntas tipadas; no es un LLM conversacional ni devuelve directamente una orden de bloqueo. La integración utiliza el endpoint `POST https://api.typesafe.ai/v1/systemone` con `model: "jev-latest"` y una pregunta `score`. Véanse la [introducción](https://docs.typesafe.ai/introduction/coding-agents), el [inicio rápido](https://docs.typesafe.ai/introduction/quickstart) y la [referencia HTTP](https://docs.typesafe.ai/api).
 
-## Entrada mínima
+## Integración implementada
 
-Jev consumiría eventos normalizados del backend, preferentemente desde el SIEM o un bus fiable. Esquema actual por línea de `backend/data/security-events.jsonl`:
+- Al configurar `TYPESAFE_API_KEY` en `backend/.env`, el backend observa eventos de autenticación fallida, acceso denegado, límites y generación fallida.
+- Tras tres fallos por IP en diez minutos, con un máximo de una evaluación por minuto, se envía a Jev un estado con tipo de evento, ruta, método, estado HTTP, etiquetas y conteo. No se envían IP, claves, contraseñas, cookies, prompts ni imágenes.
+- Jev responde un `score` de 0 a 3 y `confidence` de 0 a 1. Una puntuación de al menos 2 y confianza de al menos 0.8 produce recomendación `review`; los demás casos quedan en `observe`.
+- Las decisiones validadas se guardan en `backend/data/jev-decisions.jsonl`, junto con `request_id` para correlacionarlas con `security-events.jsonl`. Los archivos se excluyen de Git.
+- La llamada a Jev es asíncrona y tiene un plazo de cinco segundos. Un fallo de red o una respuesta inválida no bloquea la operación del usuario.
 
-```json
-{"timestamp":"2026-09-24T00:00:00.000Z","source":"flux-backend","event_type":"auth.login_failed","request_id":"uuid","src_ip":"127.0.0.1","user":null,"path":"/api/login","method":"POST","status":401,"user_agent":"browser","security_tags":["authentication"]}
-```
+## Límite operativo
 
-No enviar cookies, claves, contraseñas, prompts ni imágenes a Jev. Un correlador posterior puede añadir identidad seudonimizada, reputación de IP, reglas WAF y datos IDS con procedencia, retención y permisos definidos.
-
-## Salida propuesta
-
-```json
-{"decision_id":"uuid","request_id":"uuid","verdict":"observe","risk_score":35,"confidence":0.7,"reason_codes":["repeated_auth_failure"],"evidence_event_ids":["uuid"],"recommended_action":"alert","expires_at":"2026-09-24T01:00:00.000Z","policy_version":"jev-v1"}
-```
-
-Valores de `verdict`: `allow`, `observe`, `challenge`, `block`. Jev debe distinguir una recomendación de una acción ejecutada. La API debe validar tipos, rangos, firma/autenticación del emisor, versión de política, caducidad e idempotencia. Decisiones no válidas o servicio caído quedan en `observe` y generan alerta, salvo que una política explícita de alto riesgo establezca otra cosa.
-
-## Puesta en marcha
-
-1. Correlacionar `request_id` entre API, SIEM y Jev; fijar una política de retención y anonimización.
-2. Ejecutar Jev en modo observación y medir cobertura, latencia, precisión y falsos positivos.
-3. Probar reglas concretas, por ejemplo intentos de login distribuidos, abuso del presupuesto Foundry y acceso a imágenes ajenas. Revisar cada alerta con evidencia y contexto.
-4. Habilitar `challenge` o `block` solo con aprobación operativa, expiración automática, registro de la acción y botón de reversión.
-
-La arquitectura de referencia VPN/WAF/IDS aplica solo después de desplegar y conectar esos servicios. No deben aparecer como fuentes de evidencia en Jev antes de existir.
+Esta es una integración en **modo observación**. No se bloquean cuentas ni IP automáticamente, y no hay un SIEM ni WAF conectados. Antes de pasar a acciones activas se necesita evaluar falsos positivos, definir quién revisa las alertas, añadir retención y almacenamiento central, y diseñar un mecanismo reversible de aplicación de políticas. El umbral de 0.8 es una política inicial local que requiere calibración con datos reales.

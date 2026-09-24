@@ -49,7 +49,7 @@
 
 La arquitectura de seguridad está diseñada por fases incrementales:
 1. **Fase 1 (Implementada y Verificable)**: Endurecimiento de acceso HTTP, autenticación obligatoria previa a la recepción de ficheros (`requireUploadAuth`), cuotas horarias de generación, origen exacto, aislamiento multi-inquilino y registro local estructurado de telemetría en JSONL con identificadores unívocos por petición (`X-Request-ID`).
-2. **Fase 2 (En Planificación)**: Ingesta de telemetría en SIEM (Splunk), despliegue de borde con TLS y WAF empresarial, e integración del motor de decisiones **Jev** según el contrato formal propuesto en [`docs/JEV_DECISION_CONTRACT.md`](docs/JEV_DECISION_CONTRACT.md).
+2. **Fase 2 (En curso)**: Jev conectado opcionalmente en modo observación mediante la API de TypeSafe. La ingesta en Splunk y el borde con TLS/WAF siguen pendientes de infraestructura.
 
 Todo el código está unificado en **TypeScript** bajo estándares de tipo estricto, sin requerir intérpretes híbridos de Python en el entorno productivo.
 
@@ -87,8 +87,8 @@ Todo el código está unificado en **TypeScript** bajo estándares de tipo estri
                            │ (Futura ingesta SIEM)        │ Dual-Auth
                            ▼                              ▼ (Bearer + api-key)
               ┌─────────────────────────┐    ┌─────────────────────────┐
-              │    Splunk SIEM / Jev    │    │    Microsoft Foundry    │
-              │  (Evaluación Adaptativa)│    │      (FLUX.2-pro)       │
+              │  Splunk (futuro)       │    │    Microsoft Foundry    │
+              │  Jev: API opcional     │    │      (FLUX.2-pro)       │
               └─────────────────────────┘    └─────────────────────────┘
 ```
 
@@ -123,10 +123,10 @@ El backend incorpora controles defensivos rigurosos en cada capa:
 Para conocer en detalle la hoja de ruta y la especificación de integración con motores de decisión externos:
 
 - 📖 **[Arquitectura de Seguridad Real y Fases](docs/SECURITY_ARCHITECTURE.md)**: Detalla el estado verificable actual frente a los requerimientos para entornos expuestos (WAF, TLS, VPN administrativa, almacenamiento distribuido y retención en SIEM).
-- 🤝 **[Contrato de Decisión para Jev](docs/JEV_DECISION_CONTRACT.md)**: Especifica el formato de intercambio de telemetría y el esquema de respuesta para el motor de decisiones Jev (`verdict`: `allow`, `observe`, `challenge`, `block`, junto con `risk_score` y `reason_codes`).
+- 🤝 **[Integración Jev](docs/JEV_DECISION_CONTRACT.md)**: Describe la llamada real a TypeSafe, el score de severidad, el umbral de revisión y sus límites operativos.
 
 > [!NOTE]
-> Actualmente Jev, WAF y Splunk no se encuentran conectados ni desplegados en el repositorio; el contrato define la interfaz exacta requerida una vez se proporcione la especificación de API o ruta del código de Jev.
+> Jev se activa al configurar `TYPESAFE_API_KEY`; sin esa clave no se realizan llamadas. WAF y Splunk siguen sin desplegarse.
 
 ---
 
@@ -293,6 +293,7 @@ Configura el archivo `backend/.env` con los siguientes parámetros:
 | `COOKIE_SECURE` | Boolean | Activar flag Secure en cookies (recomendado `true` en HTTPS) | `false` |
 | `GENERATION_HOURLY_LIMIT` | Integer | Cuota máxima horaria de generaciones por usuario | `20` |
 | `TELEMETRY_FILE` | String | Ruta del archivo de eventos JSONL | `./data/security-events.jsonl` |
+| `TYPESAFE_API_KEY` | String | Activa la evaluación opcional de Jev en modo observación | *Credencial secreta (fuera de Git)* |
 
 ---
 

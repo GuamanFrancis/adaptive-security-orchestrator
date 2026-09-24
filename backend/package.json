@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "test": "tsx tests/server.test.ts"
+    "test": "tsx tests/server.test.ts && tsx tests/jev.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",

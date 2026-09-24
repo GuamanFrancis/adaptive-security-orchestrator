@@ -2,7 +2,7 @@
 
 ## Estado verificable (24 de septiembre de 2026)
 
-La imagen de VPN empresarial aportada por el usuario sirve como referencia de defensa en profundidad. Este proyecto es un estudio de generación de imágenes, por lo que su activo principal es la API de Foundry, las imágenes privadas, las cuentas y el costo de generación. No hay una VPN, WAF, proxy Squid, IDS, Splunk ni Jev operativos en este repositorio.
+La imagen de VPN empresarial aportada por el usuario sirve como referencia de defensa en profundidad. Este proyecto es un estudio de generación de imágenes, por lo que su activo principal es la API de Foundry, las imágenes privadas, las cuentas y el costo de generación. No hay una VPN, WAF, proxy Squid, IDS ni Splunk operativos en este repositorio. Jev dispone de una integración opcional en modo observación.
 
 ```mermaid
 flowchart LR
@@ -13,7 +13,8 @@ flowchart LR
   A -->|Clave solo en servidor| M[Microsoft Foundry FLUX.2-pro]
   A --> L[(Eventos JSONL locales)]
   L -. futura ingesta .-> S[SIEM / Splunk]
-  S -. futura evaluación .-> J[Jev: motor de decisiones]
+  A -. eventos sospechosos, si hay clave .-> J[Jev / TypeSafe API]
+  J -. puntuaciones .-> D[(Decisiones locales JSONL)]
 ```
 
 ## Controles implementados
@@ -24,6 +25,7 @@ flowchart LR
 - Autenticación antes de procesar archivos multipart; límites por archivo y por cantidad de partes.
 - Límite horario configurable para generación, límites de acceso por IP y cuenta para login. Son límites en memoria por proceso: reinician al reiniciar y no coordinan varias instancias.
 - Eventos de seguridad JSONL locales con `request_id`, resultado y etiquetas. No contienen prompts, credenciales, cookies ni contenido de imagen.
+- Evaluación opcional con Jev de patrones de fallos; sólo genera recomendaciones de observación o revisión, sin bloqueos automáticos.
 - Mensajes genéricos ante errores de parámetros devueltos por Foundry.
 
 ## Límites y riesgos pendientes
@@ -39,6 +41,6 @@ flowchart LR
 
 1. **Borde y operación:** fijar dominio, TLS, `APP_ORIGIN`, cookie segura, proxy de confianza controlado, WAF y límites compartidos; probar con el despliegue real.
 2. **Visibilidad:** definir retención y transporte del JSONL, ingesta en Splunk, paneles de login fallido, 403, 429, errores Foundry y volumen de generación. Alertas basadas en datos reales.
-3. **Jev:** integrar el motor según [JEV_DECISION_CONTRACT.md](JEV_DECISION_CONTRACT.md), primero en modo observación y con revisión humana antes de aplicar bloqueos. No hay un servicio Jev conectado actualmente.
+3. **Jev:** la integración inicial está en modo observación según [JEV_DECISION_CONTRACT.md](JEV_DECISION_CONTRACT.md). Calibrar con incidentes reales y revisión humana antes de aplicar bloqueos.
 
 Cada fase debe tener commit y evidencia de prueba propios. No se debe activar una respuesta automática antes de medir falsos positivos y disponer de reversión.
