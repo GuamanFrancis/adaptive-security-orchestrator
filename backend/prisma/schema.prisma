@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:../data/studio.sqlite3"
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique(map: "sqlite_autoindex_users_1")
+  passwordHash String    @map("password_hash")
+  createdAt    String    @map("created_at")
+  images       Image[]
+  sessions     Session[]
+
+  @@map("users")
+}
+
+model Session {
+  tokenHash String @id @map("token_hash")
+  userId    Int    @map("user_id")
+  csrf      String
+  expiresAt Int    @map("expires_at")
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt], map: "idx_sessions_expires_at")
+  @@map("sessions")
+}
+
+model Image {
+  id        String @id
+  userId    Int    @map("user_id")
+  prompt    String
+  width     Int
+  height    Int
+  seed      Int
+  filename  String
+  createdAt String @map("created_at")
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)], map: "idx_images_user_created")
+  @@map("images")
+}
+
+model Event {
+  id        Int    @id @default(autoincrement())
+  timestamp String
+  source    String
+  eventType String @map("event_type")
+  userId    Int?   @map("user_id")
+  status    Int
+  detail    String
+
+  @@index([timestamp(sort: Desc)], map: "idx_events_timestamp")
+  @@map("events")
+}
