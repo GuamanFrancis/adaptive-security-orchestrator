@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Enterprise-ready AI image studio powered by FLUX.2-pro (Microsoft Foundry / Azure AI) with adaptive security controls, local audit telemetry, Jev decision contract, 4K inspiration showcase, and an HTML5 Canvas post-processing suite.</strong>
+  <strong>Laboratorio local de generación de imágenes con FLUX.2-pro, React, controles de seguridad verificables, telemetría y análisis opcional con Jev.</strong>
 </p>
 
 <p align="center">
@@ -17,7 +17,7 @@
   <img src="https://img.shields.io/badge/Sharp-High--Speed%20Imaging-990000" alt="Sharp" />
   <img src="https://img.shields.io/badge/FLUX.2--pro-Microsoft%20Foundry-7928CA" alt="FLUX.2-pro" />
   <img src="https://img.shields.io/badge/Security-Hardened%20API%20%2B%20Telemetry-10B981" alt="Security" />
-  <img src="https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen" alt="Tests" />
+  <img src="https://img.shields.io/badge/Tests-Backend%20validated-brightgreen" alt="Tests" />
 </p>
 
 ---
@@ -26,7 +26,7 @@
 - [Descripción General](#-descripción-general)
 - [Arquitectura del Sistema](#-arquitectura-del-sistema)
 - [Pilares de Seguridad Adaptativa y Telemetría](#-pilares-de-seguridad-adaptativa-y-telemetría)
-- [Roadmap de Seguridad y Contrato de Decisión Jev](#-roadmap-de-seguridad-y-contrato-de-decisión-jev)
+- [Seguridad del laboratorio y arquitectura teórica](#-seguridad-del-laboratorio-y-arquitectura-teórica)
 - [Módulos Principales](#-módulos-principales)
   - [1. Creative AI Studio & FLUX.2-pro](#1-creative-ai-studio--flux2-pro)
   - [2. Editor Pro (Lienzo HTML5 Canvas 2D)](#2-editor-pro-lienzo-html5-canvas-2d)
@@ -45,13 +45,14 @@
 
 ## 🌟 Descripción General
 
-**Adaptive Security Orchestrator** integra el modelo de generación de imágenes de vanguardia **FLUX.2-pro** a través de **Microsoft Foundry / Azure AI** con una suite interactiva de post-procesamiento en React y un servidor en Node.js/TypeScript fuertemente blindado.
+**Adaptive Security Orchestrator** es un laboratorio local de generación y edición de imágenes con **FLUX.2-pro**, React y Node.js/TypeScript. Demuestra controles de seguridad en la aplicación y una integración opcional con Jev para analizar eventos.
 
 La arquitectura de seguridad está diseñada por fases incrementales:
 1. **Fase 1 (Implementada y Verificable)**: Endurecimiento de acceso HTTP, autenticación obligatoria previa a la recepción de ficheros (`requireUploadAuth`), cuotas horarias de generación, origen exacto, aislamiento multi-inquilino y registro local estructurado de telemetría en JSONL con identificadores unívocos por petición (`X-Request-ID`).
-2. **Fase 2 (En curso)**: Jev conectado opcionalmente en modo observación mediante la API de TypeSafe; exportador local opcional a Splunk HEC. El destino Splunk y el borde con TLS/WAF siguen pendientes de infraestructura.
+2. **Fase 2 (Implementada en código, opcional al ejecutar)**: Jev en modo observación mediante la API de TypeSafe y exportador a Splunk HEC probado con un servicio simulado. No se necesita Splunk para usar el laboratorio.
+3. **Extensión teórica**: WAF, VPN administrativa, segmentación de red y SIEM real se explican como arquitectura empresarial equivalente; no se van a desplegar para este proyecto.
 
-Todo el código está unificado en **TypeScript** bajo estándares de tipo estricto, sin requerir intérpretes híbridos de Python en el entorno productivo.
+La aplicación se ejecuta localmente con TypeScript y no requiere Python.
 
 ---
 
@@ -84,10 +85,10 @@ Todo el código está unificado en **TypeScript** bajo estándares de tipo estri
 │  │ - Request-ID, Path, Status, Tags, IP, Method  │      │              │
 │  └───────────────────────┬───────────────────────┘      │              │
 └──────────────────────────┼──────────────────────────────┼──────────────┘
-                           │ (Futura ingesta SIEM)        │ Dual-Auth
+                           │ (Ejercicio SIEM opcional)     │ Dual-Auth
                            ▼                              ▼ (Bearer + api-key)
               ┌─────────────────────────┐    ┌─────────────────────────┐
-              │  Splunk (futuro)       │    │    Microsoft Foundry    │
+              │  Splunk (opcional)     │    │    Microsoft Foundry    │
               │  Jev: API opcional     │    │      (FLUX.2-pro)       │
               └─────────────────────────┘    └─────────────────────────┘
 ```
@@ -118,16 +119,16 @@ El backend incorpora controles defensivos rigurosos en cada capa:
 
 ---
 
-## 🧭 Roadmap de Seguridad y Contrato de Decisión Jev
+## 🧭 Seguridad del laboratorio y arquitectura teórica
 
-Para conocer en detalle la hoja de ruta y la especificación de integración con motores de decisión externos:
+Estos documentos relacionan los controles existentes con el diagrama empresarial de referencia:
 
-- 📖 **[Arquitectura de Seguridad Real y Fases](docs/SECURITY_ARCHITECTURE.md)**: Detalla el estado verificable actual frente a los requerimientos para entornos expuestos (WAF, TLS, VPN administrativa, almacenamiento distribuido y retención en SIEM).
+- 📖 **[Arquitectura local y equivalentes empresariales](docs/SECURITY_ARCHITECTURE.md)**: Distingue lo implementado de WAF, VPN, IDS y SIEM teóricos y propone escenarios de demostración.
 - 🤝 **[Integración Jev](docs/JEV_DECISION_CONTRACT.md)**: Describe la llamada real a TypeSafe, el score de severidad, el umbral de revisión y sus límites operativos.
 - 📤 **[Exportación a Splunk HEC](docs/SPLUNK_EXPORT.md)**: Explica la configuración, ejecución, cursor y semántica de entrega.
 
 > [!NOTE]
-> Jev se activa al configurar `TYPESAFE_API_KEY`; sin esa clave no se realizan llamadas. WAF y Splunk siguen sin desplegarse.
+> Jev solo hace llamadas reales si se configura `TYPESAFE_API_KEY`. WAF, VPN y Splunk no forman parte del entorno local.
 
 ---
 
@@ -262,7 +263,7 @@ npm run dev
 ```
 Accede a la interfaz de desarrollo en: `http://localhost:5173`
 
-### 5. Compilación y Despliegue para Producción
+### 5. Compilación y ejecución local
 
 ```bash
 # 1. Compilar el cliente React + Tailwind
@@ -273,7 +274,7 @@ npm run build
 cd ../backend
 npm run build
 
-# 3. Iniciar el servidor unificado de producción
+# 3. Iniciar el servidor unificado local
 npm start
 ```
 El servidor servirá la API y los activos estáticos en: **`http://127.0.0.1:8017`**
@@ -361,7 +362,7 @@ npm test
 ## 🔒 Avisos de Seguridad
 
 > [!CAUTION]
-> **Rotación de Credenciales Requerida:** La clave API de Microsoft Foundry utilizada en fases iniciales debe rotarse en el portal de Azure AI antes de cualquier despliegue público o exposición a Internet. Nunca comitees archivos `.env` a repositorios públicos o compartidos.
+> **Rotación de Credenciales Requerida:** Una clave API de Microsoft Foundry utilizada en fases iniciales apareció en archivos de ejemplo. Debe rotarse aunque el proyecto permanezca local; nunca comitees archivos `.env` a repositorios públicos o compartidos.
 
 ---
 

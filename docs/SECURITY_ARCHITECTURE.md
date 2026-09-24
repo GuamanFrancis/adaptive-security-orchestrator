@@ -1,47 +1,48 @@
-# Arquitectura de seguridad del estudio FLUX
+# Seguridad del laboratorio FLUX
 
-## Estado verificable (24 de septiembre de 2026)
+## Alcance
 
-La imagen de VPN empresarial aportada por el usuario sirve como referencia de defensa en profundidad. Este proyecto es un estudio de generación de imágenes, por lo que su activo principal es la API de Foundry, las imágenes privadas, las cuentas y el costo de generación. No hay una VPN, WAF, proxy Squid, IDS ni Splunk operativos en este repositorio. Jev dispone de una integración opcional en modo observación.
+Este proyecto se ejecuta como **laboratorio local**. El objetivo es demostrar controles reales en una aplicación de generación de imágenes y explicar cómo encajarían en una arquitectura empresarial como la de la VPN compartida por el usuario. No se planea publicar el sitio ni desplegar WAF, VPN o Splunk. Los componentes teóricos se distinguen de los implementados.
+
+## Arquitectura que funciona hoy
 
 ```mermaid
 flowchart LR
-  U[Usuario] --> F[React y Vite]
-  F -->|Cookie HttpOnly y token CSRF| A[API Express]
-  A --> DB[(Prisma y SQLite: usuarios, sesiones e imágenes)]
-  A --> FS[(Archivos privados locales)]
+  U[Usuario local] --> F[React + Vite]
+  F -->|Cookie HttpOnly + CSRF| A[Express + TypeScript]
+  A --> DB[(Prisma + SQLite: usuarios y sesiones)]
+  A --> IMG[(Imágenes privadas en disco)]
   A -->|Clave solo en servidor| M[Microsoft Foundry FLUX.2-pro]
-  A --> L[(Eventos JSONL locales)]
-  L -. futura ingesta .-> S[SIEM / Splunk]
-  A -. eventos sospechosos, si hay clave .-> J[Jev / TypeSafe API]
-  J -. puntuaciones .-> D[(Decisiones locales JSONL)]
+  A --> LOG[(Eventos JSONL)]
+  A -. si se configura clave .-> J[Jev / TypeSafe API]
+  J -. score y confianza .-> DEC[(Decisiones JSONL: observar o revisar)]
 ```
 
-## Controles implementados
+Controles verificables: rutas privadas vinculadas al propietario; contraseñas con scrypt; sesión y CSRF; lista exacta de orígenes para cambios; límites de login y generación; autenticación antes de multipart; límite de 32 MP al decodificar y 4096 píxeles por lado al guardar; CSP y encabezados HTTP; errores de Foundry saneados; eventos con `request_id`. Jev evalúa fallos repetidos en modo observación cuando existe `TYPESAFE_API_KEY`. Su respuesta no bloquea usuarios automáticamente. El [contrato real de Jev](JEV_DECISION_CONTRACT.md) explica las preguntas tipadas y los umbrales.
 
-- Sesiones con cookie HttpOnly, SameSite=Lax; token CSRF para operaciones autenticadas; hash de contraseña con scrypt.
-- Propiedad de imágenes comprobada en las rutas privadas mediante usuario autenticado y base de datos.
-- Lista exacta de orígenes para peticiones mutantes, encabezados de seguridad y CSP sin `unsafe-eval` ni scripts en línea. Los estilos en línea siguen permitidos para la interfaz actual.
-- Autenticación antes de procesar archivos multipart; límites por archivo y por cantidad de partes. Las imágenes de la biblioteca se decodifican con límite de 32 MP y se ajustan a un máximo de 4096 píxeles por lado antes de guardarlas.
-- Límite horario configurable para generación, límites de acceso por IP y cuenta para login. Son límites en memoria por proceso: reinician al reiniciar y no coordinan varias instancias.
-- Eventos de seguridad JSONL locales con `request_id`, resultado y etiquetas. No contienen prompts, credenciales, cookies ni contenido de imagen.
-- Evaluación opcional con Jev de patrones de fallos; sólo genera recomendaciones de observación o revisión, sin bloqueos automáticos.
-- Mensajes genéricos ante errores de parámetros devueltos por Foundry.
-- Carga central de `backend/.env` antes de inicializar autenticación y orígenes. En producción el servidor no inicia sin `APP_ORIGIN` HTTPS y `COOKIE_SECURE=true`.
+Los límites de solicitudes viven en memoria y se reinician con el proceso. SQLite, las imágenes y los registros son locales. No hay respaldo ni retención automatizada. `NODE_ENV=production` tiene validación de HTTPS y cookie segura como control de código, pero no se necesita para ejecutar el laboratorio local.
 
-## Límites y riesgos pendientes
+## Relación con el diagrama empresarial
 
-1. **Borde público:** TLS, WAF, protección DDoS, control de red y VPN administrativa dependen del despliegue. No son funciones de Express y no están configurados aquí. La VPN del diagrama correspondería al acceso administrativo, no al flujo público de clientes.
-2. **Sesiones y límites:** SQLite y el rate limiter local requieren diseño de producción si se despliega en varias réplicas. El servidor exige `APP_ORIGIN` HTTPS y `COOKIE_SECURE=true` en producción, pero el proxy TLS sigue siendo una responsabilidad del despliegue.
-3. **Telemetría:** `backend/data/security-events.jsonl` es local y está excluido de Git. Existe un [exportador opcional a Splunk HEC](SPLUNK_EXPORT.md), sin destino ni token configurados. Falta programarlo, monitorearlo y definir retención y acceso.
-4. **Disponibilidad:** archivos e imágenes residen en disco local; faltan respaldo, almacenamiento compartido y política de cuotas por usuario.
-5. **Secretos:** la credencial Foundry debe rotarse si fue expuesta en algún archivo previo, almacenarse en un gestor de secretos y jamás subirse a Git. No se ha verificado la rotación.
-6. **Validación:** falta una prueba de despliegue real con TLS, proxy, WAF y el proveedor. La compilación y pruebas locales no certifican seguridad de producción.
+| Componente del diagrama | Equivalente o función en este laboratorio | Estado |
+| --- | --- | --- |
+| WebServer / aplicación | React y API Express que sirven el estudio de imágenes | Implementado localmente |
+| Base de datos | SQLite con Prisma para cuentas, sesiones y metadatos | Implementado localmente |
+| Firewall de aplicación / WAF | Filtrado y protección en el borde HTTP antes de Express | Teoría; no existe un WAF instalado |
+| Firewall / subred privada | Separaría API, base de datos y almacenamiento en redes distintas | Teoría; en el laboratorio comparten equipo |
+| VPN empresarial | Daría acceso administrativo remoto a recursos internos | Teoría; no hay acceso administrativo remoto |
+| IDS / espejo de tráfico | Detectaría patrones de red que Express no puede ver | Teoría; no hay sensor de red |
+| SIEM / Splunk | Recibiría y correlacionaría los eventos JSONL y decisiones Jev | Exportador HEC implementado y probado con simulación; sin Splunk real |
+| Jev | Clasifica severidad de eventos repetidos con `score` y `confidence` | Código integrado; requiere clave TypeSafe para llamada real |
+| Internet Gateway / TLS público | Expondría el servicio al exterior | Fuera del alcance de este laboratorio |
 
-## Fases siguientes
+El flujo empresarial conceptual sería **cliente → WAF → aplicación → telemetría → SIEM → Jev → revisión humana**. La VPN se usaría para operadores, no para quienes generan imágenes. El flujo local implementado es **navegador → Express → JSONL**, con llamadas opcionales a Foundry y Jev. La [exportación a Splunk](SPLUNK_EXPORT.md) queda como ejercicio de integración, sin necesidad de operarla para usar la aplicación.
 
-1. **Borde y operación:** fijar dominio, TLS, `APP_ORIGIN`, cookie segura, proxy de confianza controlado, WAF y límites compartidos; probar con el despliegue real.
-2. **Visibilidad:** configurar el exportador HEC, definir retención, programar su ejecución y crear en Splunk paneles de login fallido, 403, 429, errores Foundry y volumen de generación. Alertas basadas en datos reales.
-3. **Jev:** la integración inicial está en modo observación según [JEV_DECISION_CONTRACT.md](JEV_DECISION_CONTRACT.md). Calibrar con incidentes reales y revisión humana antes de aplicar bloqueos.
+## Escenarios de análisis para la demostración
 
-Cada fase debe tener commit y evidencia de prueba propios. No se debe activar una respuesta automática antes de medir falsos positivos y disponer de reversión.
+1. Varios intentos de login fallidos producen eventos `auth.login_failed`. Tras tres fallos en diez minutos, Jev puede puntuar la severidad. La acción sigue siendo `observe` o `review`.
+2. Una petición sin autorización a imágenes privadas obtiene rechazo; la prueba verifica que otro usuario no pueda descargar el archivo.
+3. Una generación repetida alcanza el límite horario y devuelve 429; el evento puede llegar al SIEM teórico mediante el exportador HEC.
+4. Una imagen comprimida con dimensiones excesivas se rechaza antes de crear un PNG de gran tamaño.
+
+Estos escenarios muestran defensa en la aplicación, trazabilidad y análisis de decisiones. No demuestran resistencia de red, inspección WAF ni operación de una VPN; esas partes se explican con el diagrama como extensión hipotética.
