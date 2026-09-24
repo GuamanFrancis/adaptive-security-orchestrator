@@ -41,12 +41,25 @@ async function runTests() {
     assert.strictEqual(healthJson.status, 'ok');
     assert.strictEqual(typeof healthJson.foundry_configured, 'boolean');
     assert.strictEqual(healthJson.version, '2.5.0');
+    assert.ok(health.headers.get('x-request-id'));
+    const csp = health.headers.get('content-security-policy') || '';
+    assert.ok(csp.includes("script-src 'self'"));
+    assert.ok(!csp.includes("'unsafe-eval'"));
+    const blockedOrigin = await request('/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Origin: 'http://127.0.0.1:5999' },
+      body: JSON.stringify({ email: 'blocked@example.com', password: 'StrongPassword1234!' }),
+    });
+    assert.strictEqual(blockedOrigin.status, 403);
+    const rejectedUpload = await request('/api/images/upload', { method: 'POST' });
+    assert.strictEqual(rejectedUpload.status, 403);
     console.log('   ✓ /health returned ok');
 
     // 2. Catalog check
     console.log('2. Testing /api/catalog...');
     const catalog = await request('/api/catalog');
     assert.strictEqual(catalog.status, 200);
+    assert.strictEqual(catalog.headers.get('cache-control'), 'no-store');
     const catalogJson = await catalog.json();
     assert.strictEqual(Array.isArray(catalogJson.catalog), true);
     assert.strictEqual(catalogJson.catalog.length, 24);

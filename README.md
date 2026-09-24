@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>Enterprise-grade AI image orchestration platform powered by FLUX.2-pro (Microsoft Foundry) with a zero-trust adaptive security architecture, 4K inspiration showcase, and an advanced post-processing Canvas editor.</strong>
+  <strong>AI image studio powered by FLUX.2-pro (Microsoft Foundry), with private image storage, security controls, and a Canvas editor.</strong>
 </p>
 
 <p align="center">
@@ -16,8 +16,7 @@
   <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white" alt="Prisma" />
   <img src="https://img.shields.io/badge/Sharp-High--Speed%20Imaging-990000" alt="Sharp" />
   <img src="https://img.shields.io/badge/FLUX.2--pro-Microsoft%20Foundry-7928CA" alt="FLUX.2-pro" />
-  <img src="https://img.shields.io/badge/Security-Hardened%20Zero--Trust-10B981" alt="Security" />
-  <img src="https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen" alt="Tests" />
+  <img src="https://img.shields.io/badge/Security-Foundation%20in%20progress-10B981" alt="Security" />
 </p>
 
 ---
@@ -43,7 +42,7 @@
 
 ## 🌟 Descripción General
 
-**Adaptive Security Orchestrator** es una solución integral y desacoplada de generación y manipulación de imágenes por inteligencia artificial. Integra el modelo de última generación **FLUX.2-pro** a través de **Microsoft Foundry / Azure AI**, orquestando peticiones complejas, síntesis multi-referencia (*Identity Pack*) y edición en tiempo real bajo un marco de **seguridad adaptativa de confianza cero**.
+**Adaptive Security Orchestrator** integra **FLUX.2-pro** mediante **Microsoft Foundry / Azure AI** para generar y editar imágenes. La seguridad está en desarrollo por fases: el estado real y los componentes pendientes se describen en [docs/SECURITY_ARCHITECTURE.md](docs/SECURITY_ARCHITECTURE.md).
 
 Construido íntegramente sobre un stack unificado en **TypeScript** (sin entornos híbridos de Python en ejecución), garantiza mantenibilidad, tipado estricto extremo a extremo y alto rendimiento tanto en el cliente como en el servidor.
 
@@ -84,7 +83,7 @@ Construido íntegramente sobre un stack unificado en **TypeScript** (sin entorno
 
 ## 🛡️ Pilares de Seguridad Adaptativa
 
-El backend implementa un pipeline defensivo multicapa diseñado para entornos de producción:
+El backend implementa los siguientes controles locales. Para exponer el servicio a Internet se requieren además los controles de infraestructura descritos en [docs/SECURITY_ARCHITECTURE.md](docs/SECURITY_ARCHITECTURE.md):
 
 1. **Gestión Criptográfica de Identidad**: Hashing de contraseñas mediante `scrypt` derivado en 64 bytes (`N=16384, r=8, p=1`) con sal aleatoria de 16 bytes y comparación de digestos en tiempo constante (`timingSafeEqual`) contra ataques de temporización.
 2. **Ciclo de Vida de Sesión HttpOnly**: Identificadores de sesión opacos de 192 bits codificados en `base64url` almacenados exclusivamente en cookies con directivas `HttpOnly`, `SameSite=Lax` y control estricto de expiración.
@@ -246,7 +245,7 @@ Configura el archivo `backend/.env` con los siguientes parámetros:
 
 | Variable | Tipo | Descripción | Ejemplo |
 | :--- | :--- | :--- | :--- |
-| `FOUNDRY_API_KEY` | String | Clave de acceso a Microsoft Foundry / Azure AI | `DhfgcuOYkw...` |
+| `FOUNDRY_API_KEY` | String | Clave de acceso a Microsoft Foundry / Azure AI | valor secreto, fuera de Git |
 | `FOUNDRY_ENDPOINT` | String | URL completa del endpoint de FLUX.2-pro | `https://tu-recurso.cognitiveservices.azure.com/providers/blackforestlabs/v1/flux-2-pro?api-version=preview` |
 | `PORT` | Integer | Puerto de escucha del servidor Express | `8017` |
 | `APP_ORIGIN` | String | Origen base permitido para solicitudes de mutación | `http://127.0.0.1:8017` |

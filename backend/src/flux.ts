@@ -91,8 +91,7 @@ export async function generateFluxImage(options: FluxGenerateOptions): Promise<F
       throw new Error('QUOTA_ERROR: Foundry alcanzó su límite de solicitudes o cuota. Intenta más tarde.');
     }
     if (status === 400) {
-      const errText = await response.text().catch(() => '');
-      throw new Error(`PARAM_ERROR: Foundry rechazó los parámetros de generación: ${errText}`);
+      throw new Error('PARAM_ERROR: Foundry rechazó los parámetros de generación.');
     }
     throw new Error(`UPSTREAM_ERROR: Foundry respondió con estado ${status}.`);
   }

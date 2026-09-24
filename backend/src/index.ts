@@ -1,12 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
-import cors from 'cors';
 import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
+import { telemetryMiddleware } from './telemetry.js';
 
 import { prisma } from './db.js';
 import {
@@ -41,11 +41,18 @@ fs.mkdirSync(OUTPUTS_DIR, { recursive: true });
 const app = express();
 const PORT = parseInt(process.env.PORT || '8017', 10);
 const APP_ORIGIN = (process.env.APP_ORIGIN || 'http://127.0.0.1:8017').replace(/\/+$/, '');
+const DEV_ORIGIN = process.env.NODE_ENV === 'production' ? '' : (process.env.DEV_ORIGIN || '').replace(/\/+$/, '');
+const ALLOWED_ORIGINS = new Set([APP_ORIGIN, DEV_ORIGIN].filter(Boolean));
 
 // Rate limiting in-memory store
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 function checkRateLimit(key: string, maxAttempts: number, windowSeconds: number): boolean {
   const now = Math.floor(Date.now() / 1000);
+  if (rateLimits.size > 10_000) {
+    for (const [storedKey, value] of rateLimits) {
+      if (value.resetAt <= now) rateLimits.delete(storedKey);
+    }
+  }
   const entry = rateLimits.get(key);
   if (!entry || entry.resetAt <= now) {
     rateLimits.set(key, { count: 1, resetAt: now + windowSeconds });
@@ -61,13 +68,25 @@ function checkRateLimit(key: string, maxAttempts: number, windowSeconds: number)
 // Multer memory storage for uploads and multi-reference payloads
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 25 * 1024 * 1024, files: 7, fields: 20, parts: 30 },
 });
+
+async function requireUploadAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!await getCurrentUser(req, true)) {
+      return res.status(403).json({ detail: 'Token CSRF inválido o sesión ausente.' });
+    }
+    next();
+  } catch {
+    return res.status(500).json({ detail: 'No se pudo verificar la sesión.' });
+  }
+}
 
 // Middleware configuration
 app.use(cookieParser());
 app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));
+app.use(telemetryMiddleware);
 
 // Security & CSP Middleware
 app.use((req: Request, res: Response, next: NextFunction) => {
@@ -75,9 +94,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.setHeader('X-Frame-Options', 'DENY');
+  if (process.env.COOKIE_SECURE === 'true') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store');
+  }
   res.setHeader(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; " +
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' https://images.unsplash.com https://*.unsplash.com data: blob:; " +
       "connect-src 'self' blob: data: https://images.unsplash.com https://*.unsplash.com; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   );
@@ -86,14 +111,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
     const origin = req.headers.origin;
     if (origin) {
       const normOrigin = origin.replace(/\/+$/, '');
-      const isAllowed =
-        normOrigin === APP_ORIGIN ||
-        normOrigin.startsWith('http://127.0.0.1:') ||
-        normOrigin === 'http://127.0.0.1' ||
-        normOrigin.startsWith('http://localhost:') ||
-        normOrigin === 'http://localhost';
-
-      if (!isAllowed || normOrigin.includes('evil')) {
+      if (!ALLOWED_ORIGINS.has(normOrigin)) {
         return res.status(403).json({ detail: 'Origen no permitido.' });
       }
     }
@@ -164,7 +182,8 @@ app.post('/api/login', async (req: Request, res: Response) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
 
-  if (!checkRateLimit(`login_${ip}_${email}`, 10, 3600)) {
+  if (!checkRateLimit(`login_ip_${ip}`, 30, 3600) ||
+      !checkRateLimit(`login_account_${email}`, 10, 3600)) {
     return res.status(429).json({ detail: 'Demasiados intentos de inicio de sesión.' });
   }
 
@@ -278,6 +297,7 @@ app.delete('/api/images/:id', async (req: Request, res: Response) => {
 // Upload External / Edited Photo to Private Library
 app.post(
   '/api/images/upload',
+  requireUploadAuth,
   upload.single('file'),
   async (req: Request, res: Response) => {
     const user = await getCurrentUser(req, true);
@@ -336,6 +356,7 @@ app.post(
 // Generate Image with FLUX.2-pro
 app.post(
   '/api/generate',
+  requireUploadAuth,
   upload.fields([
     { name: 'reference1', maxCount: 1 },
     { name: 'reference2', maxCount: 1 },
@@ -433,6 +454,12 @@ app.post(
       });
     }
 
+    const configuredLimit = Number(process.env.GENERATION_HOURLY_LIMIT || '20');
+    const hourlyLimit = Number.isInteger(configuredLimit) && configuredLimit > 0 ? configuredLimit : 20;
+    if (!checkRateLimit(`generate_${user.userId}`, hourlyLimit, 3600)) {
+      return res.status(429).json({ detail: 'Límite horario de generación alcanzado.' });
+    }
+
     try {
       const result = await generateFluxImage({
         prompt,
@@ -485,10 +512,21 @@ app.post(
       if (msg.startsWith('QUOTA_ERROR')) {
         return res.status(503).json({ detail: msg.replace('QUOTA_ERROR: ', '') });
       }
-      return res.status(502).json({ detail: msg || 'Error al comunicarse con Foundry.' });
+      if (msg.startsWith('PARAM_ERROR') || msg.startsWith('UPSTREAM_ERROR') || msg.startsWith('INVALID_RESPONSE')) {
+        return res.status(502).json({ detail: msg.replace(/^[A-Z_]+: /, '') });
+      }
+      return res.status(502).json({ detail: 'Error al comunicarse con Foundry.' });
     }
   }
 );
+
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof multer.MulterError) {
+    const status = err.code === 'LIMIT_FILE_SIZE' ? 413 : 422;
+    return res.status(status).json({ detail: 'Carga de archivos fuera de los límites permitidos.' });
+  }
+  next(err);
+});
 
 // SPA route handler for all application routes
 const ALLOWED_SPA_ROUTES = new Set([
