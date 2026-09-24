@@ -9,3 +9,8 @@
 .inspiration-card:nth-child(4){background:linear-gradient(145deg,#c39289,#644a75 55%,#181722)}
 .inspiration-card img{color:transparent}
 
+
+.auth-page{min-height:calc(100vh - 190px);display:grid;place-items:center}
+.auth-page .auth-card{width:min(100%,440px)}
+.route-loading{color:#aeb2b5;padding:40px;font-size:13px}
+

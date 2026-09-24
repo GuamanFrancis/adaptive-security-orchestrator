@@ -2,7 +2,7 @@
 
 ## Sprint 0 — base local (implementado)
 
-Frontend, login, rutas API privadas, galería por usuario, adaptador FLUX.2-pro y pruebas locales. Queda pendiente la prueba real de generación con una clave nueva de Foundry.
+Frontend React + TypeScript, login, rutas protegidas, base SQLite con migración inicial, galería por usuario, adaptador FLUX.2-pro y pruebas locales. Queda pendiente la prueba real de generación con una clave nueva de Foundry.
 
 ## Sprint 1 — staging
 

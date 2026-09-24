@@ -16,11 +16,12 @@ from threading import Lock
 import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image, UnidentifiedImageError
 
 ROOT = Path(__file__).resolve().parents[1]
+FRONTEND = ROOT / 'frontend' / 'dist'
 load_dotenv(ROOT / '.env')
 DATA = ROOT / 'data'
 OUTPUTS = DATA / 'outputs'
@@ -36,7 +37,7 @@ rate_lock = Lock()
 attempts = {}
 
 app = FastAPI(title='Flux Secure Studio', docs_url=None, redoc_url=None, openapi_url=None)
-app.mount('/static', StaticFiles(directory=ROOT / 'static'), name='static')
+app.mount('/assets', StaticFiles(directory=FRONTEND / 'assets', check_dir=False), name='assets')
 
 
 def connect():
@@ -47,10 +48,9 @@ def connect():
 
 
 with connect() as db:
-    db.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, email TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, created_at TEXT NOT NULL)')
-    db.execute('CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), csrf TEXT NOT NULL, expires_at INTEGER NOT NULL)')
-    db.execute('CREATE TABLE IF NOT EXISTS images (id TEXT PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id), prompt TEXT NOT NULL, width INTEGER NOT NULL, height INTEGER NOT NULL, seed INTEGER NOT NULL, filename TEXT NOT NULL, created_at TEXT NOT NULL)')
-    db.execute('CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY, timestamp TEXT NOT NULL, source TEXT NOT NULL, event_type TEXT NOT NULL, user_id INTEGER, status INTEGER NOT NULL, detail TEXT NOT NULL)')
+    version = db.execute('PRAGMA user_version').fetchone()[0]
+    if version < 1:
+        db.executescript((ROOT / 'migrations' / '001_initial.sql').read_text(encoding='utf-8'))
 
 
 def now():
@@ -131,7 +131,9 @@ async def security_headers(request: Request, call_next):
 
 @app.get('/')
 def home():
-    return FileResponse(ROOT / 'static' / 'index.html')
+    if not (FRONTEND / 'index.html').exists():
+        return HTMLResponse('Compila el frontend con npm run build.', status_code=503)
+    return FileResponse(FRONTEND / 'index.html')
 
 
 @app.get('/health')
@@ -281,3 +283,10 @@ async def generate(request: Request, prompt: str = Form(...), width: int = Form(
         db.execute('INSERT INTO images VALUES(?,?,?,?,?,?,?,?)', (image_id, user['user_id'], prompt.strip(), width, height, value_seed, filename, now()))
     audit('generation_success', 201, user['user_id'])
     return {'id': image_id, 'seed': value_seed}
+
+
+@app.get('/{route:path}')
+def frontend_route(route: str):
+    if route not in {'login', 'register', 'app/create', 'app/library'}:
+        raise HTTPException(404, 'Ruta no encontrada.')
+    return home()

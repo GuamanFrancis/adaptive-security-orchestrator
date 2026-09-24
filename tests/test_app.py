@@ -58,6 +58,8 @@ class StudioTests(unittest.TestCase):
     def test_public_page_and_headers(self):
         response = self.a.get('/')
         self.assertEqual(response.status_code, 200)
+        self.assertIn('/assets/', response.text)
+        self.assertEqual(self.a.get('/app/create').status_code, 200)
         self.assertIn('Content-Security-Policy', response.headers)
         self.assertIn('nosniff', response.headers['X-Content-Type-Options'])
 
