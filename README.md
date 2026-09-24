@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <strong>AI image studio powered by FLUX.2-pro (Microsoft Foundry), with private image storage, security controls, and a Canvas editor.</strong>
+  <strong>Enterprise-ready AI image studio powered by FLUX.2-pro (Microsoft Foundry / Azure AI) with adaptive security controls, local audit telemetry, Jev decision contract, 4K inspiration showcase, and an HTML5 Canvas post-processing suite.</strong>
 </p>
 
 <p align="center">
@@ -16,7 +16,8 @@
   <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?logo=prisma&logoColor=white" alt="Prisma" />
   <img src="https://img.shields.io/badge/Sharp-High--Speed%20Imaging-990000" alt="Sharp" />
   <img src="https://img.shields.io/badge/FLUX.2--pro-Microsoft%20Foundry-7928CA" alt="FLUX.2-pro" />
-  <img src="https://img.shields.io/badge/Security-Foundation%20in%20progress-10B981" alt="Security" />
+  <img src="https://img.shields.io/badge/Security-Hardened%20API%20%2B%20Telemetry-10B981" alt="Security" />
+  <img src="https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen" alt="Tests" />
 </p>
 
 ---
@@ -24,7 +25,8 @@
 ## 📑 Tabla de Contenidos
 - [Descripción General](#-descripción-general)
 - [Arquitectura del Sistema](#-arquitectura-del-sistema)
-- [Pilares de Seguridad Adaptativa](#-pilares-de-seguridad-adaptativa)
+- [Pilares de Seguridad Adaptativa y Telemetría](#-pilares-de-seguridad-adaptativa-y-telemetría)
+- [Roadmap de Seguridad y Contrato de Decisión Jev](#-roadmap-de-seguridad-y-contrato-de-decisión-jev)
 - [Módulos Principales](#-módulos-principales)
   - [1. Creative AI Studio & FLUX.2-pro](#1-creative-ai-studio--flux2-pro)
   - [2. Editor Pro (Lienzo HTML5 Canvas 2D)](#2-editor-pro-lienzo-html5-canvas-2d)
@@ -36,15 +38,20 @@
 - [Variables de Entorno](#-variables-de-entorno)
 - [Referencia de la API](#-referencia-de-la-api)
 - [Suite de Pruebas Automatizadas](#-suite-de-pruebas-automatizadas)
+- [Avisos de Seguridad](#-avisos-de-seguridad)
 - [Licencia](#-licencia)
 
 ---
 
 ## 🌟 Descripción General
 
-**Adaptive Security Orchestrator** integra **FLUX.2-pro** mediante **Microsoft Foundry / Azure AI** para generar y editar imágenes. La seguridad está en desarrollo por fases: el estado real y los componentes pendientes se describen en [docs/SECURITY_ARCHITECTURE.md](docs/SECURITY_ARCHITECTURE.md).
+**Adaptive Security Orchestrator** integra el modelo de generación de imágenes de vanguardia **FLUX.2-pro** a través de **Microsoft Foundry / Azure AI** con una suite interactiva de post-procesamiento en React y un servidor en Node.js/TypeScript fuertemente blindado.
 
-Construido íntegramente sobre un stack unificado en **TypeScript** (sin entornos híbridos de Python en ejecución), garantiza mantenibilidad, tipado estricto extremo a extremo y alto rendimiento tanto en el cliente como en el servidor.
+La arquitectura de seguridad está diseñada por fases incrementales:
+1. **Fase 1 (Implementada y Verificable)**: Endurecimiento de acceso HTTP, autenticación obligatoria previa a la recepción de ficheros (`requireUploadAuth`), cuotas horarias de generación, origen exacto, aislamiento multi-inquilino y registro local estructurado de telemetría en JSONL con identificadores unívocos por petición (`X-Request-ID`).
+2. **Fase 2 (En Planificación)**: Ingesta de telemetría en SIEM (Splunk), despliegue de borde con TLS y WAF empresarial, e integración del motor de decisiones **Jev** según el contrato formal propuesto en [`docs/JEV_DECISION_CONTRACT.md`](docs/JEV_DECISION_CONTRACT.md).
+
+Todo el código está unificado en **TypeScript** bajo estándares de tipo estricto, sin requerir intérpretes híbridos de Python en el entorno productivo.
 
 ---
 
@@ -55,43 +62,71 @@ Construido íntegramente sobre un stack unificado en **TypeScript** (sin entorno
 │                        FRONTEND (React 18 + Vite)                      │
 │   Tailwind CSS  │  Director Creativo  │  Editor Pro  │  Catálogo 4K    │
 └───────────────────────────────────┬────────────────────────────────────┘
-                                    │ HTTP / JSON / Multipart
-                                    │ Cookies HttpOnly + Header CSRF
+                                    │ HTTP / Cookies HttpOnly + CSRF
+                                    │ Cabecera X-Request-ID en respuestas
 ┌───────────────────────────────────▼────────────────────────────────────┐
 │                    ADAPTIVE SECURITY ORCHESTRATOR                      │
 │                                                                        │
-│  [ Origin Validator ] ──► [ Rate Limiter ] ──► [ Session & CSRF Guard ]│
-│                                                        │               │
-│                                                        ▼               │
-│  ┌─────────────────────────┐              ┌─────────────────────────┐  │
-│  │   Prisma ORM (SQLite)   │              │   Sharp Image Pipeline  │  │
-│  │  - User Authentication  │              │  - EXIF Auto-Transpose  │  │
-│  │  - Session Lifecycle    │              │  - Identity Pack 2x3/3x2│  │
-│  │  - Multi-tenant Images  │              │  - High-res Sanitizer   │  │
-│  └─────────────────────────┘              └────────────┬────────────┘  │
-└────────────────────────────────────────────────────────┼───────────────┘
-                                                         │ HTTPS Dual-Auth
-                                                         │ (Bearer + api-key)
-                                                         ▼
-                                            ┌─────────────────────────┐
-                                            │    Microsoft Foundry    │
-                                            │      (FLUX.2-pro)       │
-                                            └─────────────────────────┘
+│  [ Exact Origin Gateway ] ──► [ Rate Limiter (IP/Cuenta/Gen) ]         │
+│               │                                                        │
+│               ▼                                                        │
+│  [ Pre-Upload Auth Guard ] ──► [ Session & CSRF Verification ]         │
+│                                           │                            │
+│  ┌─────────────────────────┐              │  ┌──────────────────────┐  │
+│  │   Prisma ORM (SQLite)   │              │  │ Sharp Image Pipeline │  │
+│  │  - User Authentication  │              │  │ - EXIF Sanitizer     │  │
+│  │  - Session Lifecycle    │              │  │ - Identity Pack 2x3  │  │
+│  │  - Multi-tenant Images  │              │  └──────────┬───────────┘  │
+│  └─────────────────────────┘              │             │              │
+│                                           ▼             │              │
+│  ┌───────────────────────────────────────────────┐      │              │
+│  │ Local Telemetry Logger (security-events.jsonl)│      │              │
+│  │ - Request-ID, Path, Status, Tags, IP, Method  │      │              │
+│  └───────────────────────┬───────────────────────┘      │              │
+└──────────────────────────┼──────────────────────────────┼──────────────┘
+                           │ (Futura ingesta SIEM)        │ Dual-Auth
+                           ▼                              ▼ (Bearer + api-key)
+              ┌─────────────────────────┐    ┌─────────────────────────┐
+              │    Splunk SIEM / Jev    │    │    Microsoft Foundry    │
+              │  (Evaluación Adaptativa)│    │      (FLUX.2-pro)       │
+              └─────────────────────────┘    └─────────────────────────┘
 ```
 
 ---
 
-## 🛡️ Pilares de Seguridad Adaptativa
+## 🛡️ Pilares de Seguridad Adaptativa y Telemetría
 
-El backend implementa los siguientes controles locales. Para exponer el servicio a Internet se requieren además los controles de infraestructura descritos en [docs/SECURITY_ARCHITECTURE.md](docs/SECURITY_ARCHITECTURE.md):
+El backend incorpora controles defensivos rigurosos en cada capa:
 
-1. **Gestión Criptográfica de Identidad**: Hashing de contraseñas mediante `scrypt` derivado en 64 bytes (`N=16384, r=8, p=1`) con sal aleatoria de 16 bytes y comparación de digestos en tiempo constante (`timingSafeEqual`) contra ataques de temporización.
-2. **Ciclo de Vida de Sesión HttpOnly**: Identificadores de sesión opacos de 192 bits codificados en `base64url` almacenados exclusivamente en cookies con directivas `HttpOnly`, `SameSite=Lax` y control estricto de expiración.
-3. **Defensa Mitigante contra CSRF**: Token único de 128 bits emitido por sesión, requerido en la cabecera `X-CSRF-Token` para todas las operaciones mutantes (`POST`, `PUT`, `DELETE`).
-4. **Validación Adaptativa de Origen**: Middleware de filtrado que verifica la procedencia de cada solicitud y rechaza conexiones externas o de dominios no autorizados (protección anti-tampering).
-5. **Aislamiento Multi-inquilino de Archivos**: Los recursos de imagen y descargas binarias están vinculados de manera estricta al identificador del usuario propietario en la base de datos; accesos cruzados resultan en denegación inmediata (`404 Not Found`).
-6. **Saneamiento EXIF y Prevención de Desbordamiento**: Procesamiento a través de **Sharp** que reorienta automáticamente las capturas móviles, elimina metadatos residuales vulnerables e impone límites estrictos de memoria y resolución (máximo 32 MP / 20 MB).
-7. **Content Security Policy (CSP)**: Cabeceras restrictivas para mitigar ataques XSS e inyecciones de script, permitiendo únicamente orígenes validados y dominios autorizados de Unsplash.
+1. **Pre-Autenticación en Carga de Archivos (`requireUploadAuth`)**: La sesión y el token CSRF se verifican *antes* de que Multer procese o reciba streams multipart en memoria, neutralizando vectores de agotamiento de recursos y DoS por clientes anónimos.
+2. **Puerta de Enlace de Origen Exacto (`ALLOWED_ORIGINS`)**: Validación estricta contra un conjunto cerrado de orígenes (`APP_ORIGIN`, `DEV_ORIGIN`). Peticiones mutantes (`POST`, `PUT`, `DELETE`) de orígenes no autorizados o sospechosos son rechazadas inmediatamente con `403 Forbidden`.
+3. **Límites de Carga y Generación Multinivel**:
+   - Límites Multer: máximo 25 MB por archivo, 7 archivos, 20 campos y 30 partes por solicitud.
+   - Límites de login: 30 intentos/hora por IP y 10 intentos/hora por cuenta.
+   - Cuota de generación: límite horario configurable (`GENERATION_HOURLY_LIMIT`, por defecto 20 generaciones/hora por usuario) para prevenir el drenaje del presupuesto de API.
+4. **Telemetría y Registro de Auditoría Local (JSONL)**:
+   - Registro en `backend/data/security-events.jsonl` con formato normalizado.
+   - Cada solicitud recibe un identificador criptográfico `X-Request-ID` (UUID v4) transmitido en la cabecera HTTP.
+   - Registro de `timestamp`, `event_type` (`auth.login_failed`, `image.generation_success`, etc.), `status`, `user_agent` saneado y `security_tags`.
+   - **Privacidad y Seguridad de Datos**: El registro **no** almacena prompts, contraseñas, tokens, cookies ni contenido de imágenes.
+5. **Ofuscación de Errores de Upstream**: Las respuestas de error de Microsoft Foundry son saneadas; nunca se filtran parámetros internos, esquemas o mensajes de depuración a clientes no autorizados.
+6. **Gestión Criptográfica de Identidad**: Hashing de contraseñas mediante `scrypt` derivado en 64 bytes (`N=16384, r=8, p=1`) con sal aleatoria de 16 bytes y comparación en tiempo constante (`timingSafeEqual`).
+7. **Sesiones Seguras HttpOnly y CSRF**: Cookies con directivas `HttpOnly`, `SameSite=Lax`, expiración forzada y token criptográfico único de 128 bits verificado en `X-CSRF-Token`.
+8. **Aislamiento Multi-inquilino de Archivos**: Acceso a imágenes privadas verificado a nivel de fila en la base de datos contra el `userId` de la sesión.
+9. **Saneamiento EXIF y Validación de Resolución**: Procesamiento con **Sharp** que reorienta automáticamente capturas móviles, purga metadatos residuales y descarta imágenes superiores a 32 MP.
+10. **Content Security Policy (CSP)**: Cabeceras restrictivas sin `unsafe-eval` ni scripts en línea, permitiendo únicamente orígenes validados y dominios autorizados de Unsplash.
+
+---
+
+## 🧭 Roadmap de Seguridad y Contrato de Decisión Jev
+
+Para conocer en detalle la hoja de ruta y la especificación de integración con motores de decisión externos:
+
+- 📖 **[Arquitectura de Seguridad Real y Fases](docs/SECURITY_ARCHITECTURE.md)**: Detalla el estado verificable actual frente a los requerimientos para entornos expuestos (WAF, TLS, VPN administrativa, almacenamiento distribuido y retención en SIEM).
+- 🤝 **[Contrato de Decisión para Jev](docs/JEV_DECISION_CONTRACT.md)**: Especifica el formato de intercambio de telemetría y el esquema de respuesta para el motor de decisiones Jev (`verdict`: `allow`, `observe`, `challenge`, `block`, junto con `risk_score` y `reason_codes`).
+
+> [!NOTE]
+> Actualmente Jev, WAF y Splunk no se encuentran conectados ni desplegados en el repositorio; el contrato define la interfaz exacta requerida una vez se proporcione la especificación de API o ruta del código de Jev.
 
 ---
 
@@ -99,69 +134,73 @@ El backend implementa los siguientes controles locales. Para exponer el servicio
 
 ### 1. Creative AI Studio & FLUX.2-pro
 - **Modos de Generación**:
-  - `t2i` (Texto a Imagen): Control total sobre el aspect ratio (1:1, 4:5, 9:16, 16:9, etc.) y seed de aleatoriedad.
-  - `copy_pose_outfit` (I2I Guía): Transferencia de composición espacial y vestimenta mediante imagen guía.
-  - `identity_pack`: Fusión inteligente de 1 a 6 imágenes del sujeto en cuadrículas balanceadas (2×3 o 3×2) compuestas en memoria por **Sharp** para máxima preservación de rasgos faciales.
-- **Asistente de Dirección**: Inyección automatizada de estilos fotográficos (Cine Anamórfico 35mm, Hasselblad Medio Formato, Iluminación Golden Hour, Shinjuku Neon, etc.).
+  - `t2i` (Texto a Imagen): Control total sobre resolución (múltiplos de 16, hasta 2048x2048), aspecto y semilla aleatoria.
+  - `copy_pose_outfit` (I2I Guía): Transferencia espacial de pose y vestuario mediante imagen guía.
+  - `identity_pack`: Fusión inteligente de 1 a 6 fotos de referencia en cuadrículas (*2×3 o 3×2*) generadas en memoria por **Sharp** para máxima fidelidad de fisonomía facial.
+- **Director Creativo**: Inyección asistida de parámetros de cámara (Hasselblad H6D-100c, 85mm f/1.4, Panavision 35mm), iluminación (Golden Hour, Neón Bicolor, Luz Cenital) y tokens anti-defectos.
 
 ### 2. Editor Pro (Lienzo HTML5 Canvas 2D)
-Suite completa de retoque y post-procesado accesible directamente en `/app/editor`:
-- **Parámetros en Tiempo Real**: Brillo, Contraste, Saturación, Calidez, Exposición, Desenfoque gaussiano suave, Viñeta cinematográfica, Grano fílmico e Inversión de luminancia.
+Suite completa de retoque y post-procesado accesible en `/app/editor`:
+- **Ajustes en Tiempo Real**: Brillo, Contraste, Saturación, Calidez, Exposición, Desenfoque gaussiano suave, Viñeta cinematográfica, Grano fílmico e Inversión.
 - **8 Presets LUT**: *Natural*, *Teal & Orange*, *Monocromo Noir*, *Golden Hour*, *Cyberpunk Neo*, *Vintage 70s*, *Mate Falso* y *Nieve Ártica*.
 - **Transformaciones Geométricas**: Rotación 90° horario/antihorario, volteo horizontal y vertical.
-- **Canalización Directa**: Guarda la imagen retocada en la biblioteca privada, descárgala en PNG nativo o envíala directamente como Referencia 1 o Guía para nuevas generaciones.
-- **Drag & Drop**: Soporte para arrastrar archivos locales directamente sobre el viewport.
+- **Exportación Directa**: Guardar en la biblioteca privada, descargar en PNG nativo o reutilizar como Referencia 1 o Guía en el estudio.
+- **Drag & Drop**: Arrastre de imágenes del escritorio directamente sobre el lienzo de trabajo.
 
 ### 3. Catálogo Maestro 4K UHD
-Galería pública de inspiración curada con **24 obras maestras** en ultra alta resolución (3840 px) categorizadas en Retrato, Arquitectura, Cinematografía, Naturaleza, Arte Digital y Lifestyle. Cada obra cuenta con su ficha técnica fotográfica detallada y botones de transferencia instantánea al estudio o al editor.
+Galería pública de inspiración con **24 creaciones curadas en ultra alta resolución (3840 px)** clasificadas en Retrato, Arquitectura, Cinematografía, Naturaleza, Arte Digital y Lifestyle, con ficha técnica completa y carga inmediata en el estudio o editor.
 
 ### 4. Bóveda Privada de Medios
-Panel de control personal donde el usuario visualiza, organiza, descarga y elimina sus creaciones o fotos externas cargadas, respaldado por **Prisma ORM** sobre SQLite con soporte transparente para PostgreSQL.
+Panel de control de usuario para almacenar, explorar, reutilizar o eliminar creaciones y fotos personales con total aislamiento y persistencia en SQLite/PostgreSQL a través de Prisma.
 
 ---
 
 ## 📁 Estructura del Proyecto
-
-El repositorio está organizado en dos módulos independientes y autosuficientes:
 
 ```text
 adaptive-security-orchestrator/
 │
 ├── backend/                       # Servidor Node.js + TypeScript + Prisma
 │   ├── data/
-│   │   ├── outputs/               # Almacenamiento seguro de archivos de imagen
-│   │   └── studio.sqlite3         # Base de datos local SQLite
+│   │   ├── outputs/               # Almacenamiento seguro de imágenes generadas
+│   │   ├── security-events.jsonl  # Registro local de eventos de seguridad y telemetría
+│   │   └── studio.sqlite3         # Base de datos SQLite
 │   ├── prisma/
-│   │   └── schema.prisma          # Esquema de datos y modelos relacionales
+│   │   └── schema.prisma          # Esquema relacional tipado (User, Session, Image, Event)
 │   ├── src/
-│   │   ├── auth.ts                # Servicios de seguridad, criptografía y sesiones
-│   │   ├── catalog.ts             # Colección curada de 24 obras 4K
-│   │   ├── db.ts                  # Cliente singleton de Prisma
-│   │   ├── flux.ts                # Conector a Microsoft Foundry FLUX.2-pro
+│   │   ├── auth.ts                # Criptografía scrypt, sesiones HttpOnly, CSRF
+│   │   ├── catalog.ts             # 24 obras maestras en 4K UHD
+│   │   ├── db.ts                  # Instancia singleton de PrismaClient
+│   │   ├── flux.ts                # Conector a Microsoft Foundry FLUX.2-pro (Dual-Auth)
 │   │   ├── imageUtils.ts          # Procesador gráfico Sharp (EXIF, Identity Pack)
-│   │   └── index.ts               # Servidor Express, middlewares y rutas REST/SPA
+│   │   ├── index.ts               # Servidor Express, seguridad, rate limiting y SPA
+│   │   └── telemetry.ts           # Middleware de telemetría y request_id
 │   ├── tests/
 │   │   └── server.test.ts         # Suite automatizada de pruebas en TypeScript
-│   ├── .env                       # Variables de entorno y credenciales
+│   ├── .env                       # Variables de entorno y credenciales (fuera de Git)
 │   ├── .env.example               # Plantilla de configuración
-│   ├── package.json               # Dependencias del servidor
+│   ├── package.json               # Dependencias y scripts del backend
 │   └── tsconfig.json              # Configuración TypeScript del backend
 │
 ├── frontend/                      # Cliente web React + TypeScript + Tailwind
 │   ├── src/
-│   │   ├── App.tsx                # Vistas principales (Studio, Editor, Galería, Vault)
+│   │   ├── App.tsx                # Vistas principales (Studio, Editor Pro, Catálogo, Vault)
 │   │   ├── api.ts                 # Cliente HTTP tipado con interceptores
-│   │   ├── image.ts               # Utilidades de imagen en el cliente
+│   │   ├── image.ts               # Utilidades de imagen y canvas en el cliente
 │   │   ├── router.tsx             # Enrutador cliente SPA reactivo
-│   │   └── style.css              # Sistema de diseño con variables y Tailwind
+│   │   └── style.css              # Sistema de diseño Obsidian con Tailwind CSS
 │   ├── postcss.config.js          # Pipeline PostCSS
 │   ├── tailwind.config.js         # Configuración del motor Tailwind CSS
 │   ├── vite.config.ts             # Empaquetador Vite con proxy inverso
 │   ├── package.json               # Dependencias del cliente
 │   └── tsconfig.json              # Configuración TypeScript del frontend
 │
-├── .gitignore                     # Exclusión de artefactos y entornos
-└── README.md                      # Documentación principal del sistema
+├── docs/                          # Documentación arquitectónica de seguridad
+│   ├── SECURITY_ARCHITECTURE.md   # Arquitectura real y límites del entorno
+│   └── JEV_DECISION_CONTRACT.md   # Especificación del contrato con el motor Jev
+│
+├── .gitignore                     # Exclusión de credenciales, SQLite y outputs
+└── README.md                      # Documentación técnica principal
 ```
 
 ---
@@ -170,7 +209,7 @@ adaptive-security-orchestrator/
 
 - **Node.js**: Versión `20.x` o `22.x` LTS instalada.
 - **npm**: Versión `10.x` o superior.
-- **Credenciales Azure**: Endpoint y API Key válidos de Microsoft Foundry para el modelo `FLUX.2-pro`.
+- **Microsoft Foundry**: Endpoint y API Key válidos para el modelo `FLUX.2-pro`.
 
 ---
 
@@ -178,7 +217,7 @@ adaptive-security-orchestrator/
 
 ### 1. Clonar el repositorio
 ```bash
-git clone https://github.com/tu-usuario/adaptive-security-orchestrator.git
+git clone https://github.com/GuamanFrancis/adaptive-security-orchestrator.git
 cd adaptive-security-orchestrator
 ```
 
@@ -191,10 +230,11 @@ npm install
 
 # Configurar variables de entorno
 cp .env.example .env
-# Edita backend/.env con tus credenciales de Microsoft Foundry
+# Edita backend/.env con tus credenciales seguras de Microsoft Foundry
 
-# Generar cliente de Prisma y verificar esquema
+# Generar cliente de Prisma y sincronizar base de datos
 npx prisma generate
+npx prisma db push
 ```
 
 ### 3. Configurar el Frontend
@@ -219,7 +259,7 @@ npm run dev
 cd frontend
 npm run dev
 ```
-Accede a la interfaz en: `http://localhost:5173`
+Accede a la interfaz de desarrollo en: `http://localhost:5173`
 
 ### 5. Compilación y Despliegue para Producción
 
@@ -235,7 +275,7 @@ npm run build
 # 3. Iniciar el servidor unificado de producción
 npm start
 ```
-El servidor servirá tanto la API como la interfaz compilada en: **`http://127.0.0.1:8017`**
+El servidor servirá la API y los activos estáticos en: **`http://127.0.0.1:8017`**
 
 ---
 
@@ -245,53 +285,56 @@ Configura el archivo `backend/.env` con los siguientes parámetros:
 
 | Variable | Tipo | Descripción | Ejemplo |
 | :--- | :--- | :--- | :--- |
-| `FOUNDRY_API_KEY` | String | Clave de acceso a Microsoft Foundry / Azure AI | valor secreto, fuera de Git |
+| `FOUNDRY_API_KEY` | String | Clave de acceso a Microsoft Foundry / Azure AI | *Credencial secreta (fuera de Git)* |
 | `FOUNDRY_ENDPOINT` | String | URL completa del endpoint de FLUX.2-pro | `https://tu-recurso.cognitiveservices.azure.com/providers/blackforestlabs/v1/flux-2-pro?api-version=preview` |
 | `PORT` | Integer | Puerto de escucha del servidor Express | `8017` |
 | `APP_ORIGIN` | String | Origen base permitido para solicitudes de mutación | `http://127.0.0.1:8017` |
+| `DEV_ORIGIN` | String | Origen adicional permitido en desarrollo | `http://localhost:5173` |
 | `COOKIE_SECURE` | Boolean | Activar flag Secure en cookies (recomendado `true` en HTTPS) | `false` |
+| `GENERATION_HOURLY_LIMIT` | Integer | Cuota máxima horaria de generaciones por usuario | `20` |
+| `TELEMETRY_FILE` | String | Ruta del archivo de eventos JSONL | `./data/security-events.jsonl` |
 
 ---
 
 ## 🔌 Referencia de la API
 
 ### Endpoints del Sistema y Catálogo
-- `GET /health` — Estado de salud, runtime y verificación de conectividad con Foundry.
-- `GET /api/catalog` — Listado completo de las 24 creaciones en resolución 4K.
+- `GET /health` — Estado de salud, runtime, identificador `X-Request-ID` y verificación de Foundry.
+- `GET /api/catalog` — Catálogo público de 24 obras maestras en 4K UHD.
 
 ### Autenticación y Cuentas
-- `POST /api/register` — Registro de cuenta con validación de contraseña robusta.
-- `POST /api/login` — Autenticación, expedición de cookie `session_id` y token CSRF.
-- `POST /api/logout` — Revocación de sesión activa y limpieza de cookies.
+- `POST /api/register` — Registro de usuario con validación de contraseña robusta.
+- `POST /api/login` — Autenticación con limitador por IP y por cuenta; expedición de sesión y token CSRF.
+- `POST /api/logout` — Revocación de sesión activa y eliminación de cookie.
 - `GET /api/me` — Consulta del perfil del usuario autenticado actual.
 
 ### Bóveda de Imágenes
 - `GET /api/images` — Obtiene la colección privada de imágenes del usuario.
-- `GET /api/images/:id/file` — Descarga binaria con aislamiento de seguridad.
+- `GET /api/images/:id/file` — Descarga binaria con aislamiento de seguridad estricto.
 - `DELETE /api/images/:id` — Eliminación atómica en base de datos y disco físico.
-- `POST /api/images/upload` — Carga directa de imágenes externas/editadas con optimización Sharp.
+- `POST /api/images/upload` — Carga de fotos con pre-autenticación `requireUploadAuth` y optimización Sharp.
 
 ### Generación por IA
-- `POST /api/generate` — Orquestación de peticiones hacia FLUX.2-pro con soporte para prompt, resolución, semillas, tolerancia de seguridad y composición multi-referencia (*Identity Pack*).
+- `POST /api/generate` — Orquestación hacia FLUX.2-pro con soporte para prompt, resolución, semillas, control de cuota horaria y composición multi-referencia (*Identity Pack*).
 
 ---
 
 ## 🧪 Suite de Pruebas Automatizadas
 
-El proyecto incluye pruebas de integración en TypeScript (`backend/tests/server.test.ts`) ejecutables de forma nativa sin herramientas externas de Python:
+El proyecto incluye pruebas de integración en TypeScript (`backend/tests/server.test.ts`) ejecutables de forma nativa:
 
 ```bash
 cd backend
 npm test
 ```
 
-### Cobertura de Pruebas:
+### Cobertura Verificada:
 ```text
 🧪 Starting TypeScript / Prisma backend test suite...
 1. Testing /health...
-   ✓ /health returned ok
+   ✓ /health returned ok (X-Request-ID, CSP, Blocked Origin, Pre-auth upload)
 2. Testing /api/catalog...
-   ✓ /api/catalog returned 24 4K items
+   ✓ /api/catalog returned 24 4K items (cache-control: no-store)
 3. Testing registration and authentication...
    ✓ User A registered and session cookie issued
    ✓ Duplicate email rejected with 409
@@ -304,8 +347,15 @@ npm test
 6. Testing Identity Pack synthesis with Sharp...
    ✓ Identity pack built successfully (808x542)
 
-🎉 ALL 7 TEST SUITES PASSED! Pure TypeScript + Prisma stack is 100% operational!
+🎉 ALL TEST SUITES PASSED! Pure TypeScript + Prisma stack is 100% operational!
 ```
+
+---
+
+## 🔒 Avisos de Seguridad
+
+> [!CAUTION]
+> **Rotación de Credenciales Requerida:** La clave API de Microsoft Foundry utilizada en fases iniciales debe rotarse en el portal de Azure AI antes de cualquier despliegue público o exposición a Internet. Nunca comitees archivos `.env` a repositorios públicos o compartidos.
 
 ---
 
