@@ -172,6 +172,17 @@ async function runTests() {
     assert.strictEqual(delRes.status, 200);
     console.log('   ✓ Image deleted successfully');
 
+    const wideImage = await sharp({ create: { width: 4500, height: 20, channels: 3, background: 'white' } }).png().toBuffer();
+    const wideForm = new FormData();
+    wideForm.append('file', new Blob([wideImage], { type: 'image/png' }), 'wide.png');
+    const wideRes = await fetch(`${BASE_URL}/api/images/upload`, {
+      method: 'POST', headers: { Cookie: sessionCookieA, 'x-csrf-token': csrfA }, body: wideForm,
+    });
+    assert.strictEqual(wideRes.status, 200);
+    const wideJson = await wideRes.json();
+    assert.strictEqual(wideJson.width, 4096);
+    await request(`/api/images/${wideJson.id}`, { method: 'DELETE', headers: { Cookie: sessionCookieA, 'x-csrf-token': csrfA } });
+
     // 7. Identity pack composition
     console.log('6. Testing Identity Pack synthesis with Sharp...');
     const ref1 = await sharp({ create: { width: 200, height: 200, channels: 3, background: 'red' } }).jpeg().toBuffer();

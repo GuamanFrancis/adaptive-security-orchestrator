@@ -22,7 +22,7 @@ flowchart LR
 - Sesiones con cookie HttpOnly, SameSite=Lax; token CSRF para operaciones autenticadas; hash de contraseña con scrypt.
 - Propiedad de imágenes comprobada en las rutas privadas mediante usuario autenticado y base de datos.
 - Lista exacta de orígenes para peticiones mutantes, encabezados de seguridad y CSP sin `unsafe-eval` ni scripts en línea. Los estilos en línea siguen permitidos para la interfaz actual.
-- Autenticación antes de procesar archivos multipart; límites por archivo y por cantidad de partes.
+- Autenticación antes de procesar archivos multipart; límites por archivo y por cantidad de partes. Las imágenes de la biblioteca se decodifican con límite de 32 MP y se ajustan a un máximo de 4096 píxeles por lado antes de guardarlas.
 - Límite horario configurable para generación, límites de acceso por IP y cuenta para login. Son límites en memoria por proceso: reinician al reiniciar y no coordinan varias instancias.
 - Eventos de seguridad JSONL locales con `request_id`, resultado y etiquetas. No contienen prompts, credenciales, cookies ni contenido de imagen.
 - Evaluación opcional con Jev de patrones de fallos; sólo genera recomendaciones de observación o revisión, sin bloqueos automáticos.

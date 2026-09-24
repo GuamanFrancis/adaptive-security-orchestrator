@@ -311,14 +311,19 @@ app.post(
     }
 
     let processedBuffer: Buffer;
-    let meta: sharp.Metadata;
+    let outputWidth: number;
+    let outputHeight: number;
     try {
-      const pipeline = sharp(req.file.buffer).rotate();
-      meta = await pipeline.metadata();
-      if (!meta.width || !meta.height) {
+      const pipeline = sharp(req.file.buffer, { limitInputPixels: 32_000_000 }).rotate();
+      const inputMeta = await pipeline.metadata();
+      if (!inputMeta.width || !inputMeta.height || inputMeta.width * inputMeta.height > 32_000_000) {
         return res.status(422).json({ detail: 'Archivo de imagen no legible.' });
       }
-      processedBuffer = await pipeline.toFormat('png').toBuffer();
+      const output = await pipeline.resize({ width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true })
+        .png().toBuffer({ resolveWithObject: true });
+      processedBuffer = output.data;
+      outputWidth = output.info.width;
+      outputHeight = output.info.height;
     } catch {
       return res.status(422).json({ detail: 'Archivo de imagen inválido o corrupto.' });
     }
@@ -334,8 +339,8 @@ app.post(
         id: imageId,
         userId: user.userId,
         prompt,
-        width: meta.width,
-        height: meta.height,
+        width: outputWidth,
+        height: outputHeight,
         seed: 1,
         filename,
         createdAt: new Date().toISOString(),
@@ -345,8 +350,8 @@ app.post(
     return res.json({
       id: imageId,
       prompt,
-      width: meta.width,
-      height: meta.height,
+      width: outputWidth,
+      height: outputHeight,
       filename,
       url: `/api/images/${imageId}/file`,
       created_at: new Date().toISOString(),

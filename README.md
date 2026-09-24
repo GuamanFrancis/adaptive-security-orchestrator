@@ -113,7 +113,7 @@ El backend incorpora controles defensivos rigurosos en cada capa:
 6. **Gestión Criptográfica de Identidad**: Hashing de contraseñas mediante `scrypt` derivado en 64 bytes (`N=16384, r=8, p=1`) con sal aleatoria de 16 bytes y comparación en tiempo constante (`timingSafeEqual`).
 7. **Sesiones Seguras HttpOnly y CSRF**: Cookies con directivas `HttpOnly`, `SameSite=Lax`, expiración forzada y token criptográfico único de 128 bits verificado en `X-CSRF-Token`.
 8. **Aislamiento Multi-inquilino de Archivos**: Acceso a imágenes privadas verificado a nivel de fila en la base de datos contra el `userId` de la sesión.
-9. **Saneamiento EXIF y Validación de Resolución**: Procesamiento con **Sharp** que reorienta automáticamente capturas móviles, purga metadatos residuales y descarta imágenes superiores a 32 MP.
+9. **Saneamiento EXIF y Validación de Resolución**: Procesamiento con **Sharp** que reorienta capturas móviles, purga metadatos, limita la entrada a 32 MP y ajusta las imágenes subidas a un máximo de 4096 píxeles por lado.
 10. **Content Security Policy (CSP)**: Cabeceras restrictivas sin `unsafe-eval` ni scripts en línea, permitiendo únicamente orígenes validados y dominios autorizados de Unsplash.
 
 ---
