@@ -17,8 +17,10 @@ export interface ExportOptions {
 
 export async function exportFileToSplunk(options: ExportOptions): Promise<number> {
   const url = new URL(options.endpoint);
-  if (url.protocol !== 'https:' || !['/services/collector', '/services/collector/event'].includes(url.pathname)) {
-    throw new Error('SPLUNK_HEC_URL debe ser HTTPS y terminar en /services/collector o /services/collector/event');
+  const localHttp = url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname);
+  if ((!localHttp && url.protocol !== 'https:') || url.username || url.password || url.search || url.hash ||
+      !['/services/collector', '/services/collector/event'].includes(url.pathname)) {
+    throw new Error('SPLUNK_HEC_URL debe usar HTTPS (o HTTP solo en loopback) y un endpoint HEC válido');
   }
   if (!options.token.trim()) throw new Error('Falta SPLUNK_HEC_TOKEN');
   if (!fs.existsSync(options.inputPath)) return 0;

@@ -34,6 +34,8 @@ try {
   assert.equal(fs.readFileSync(cursorPath, 'utf8'), '2');
   assert.equal(await exportFileToSplunk(options), 0);
   await assert.rejects(() => exportFileToSplunk({ ...options, endpoint: 'http://splunk.example.com/services/collector/event' }));
+  assert.equal(await exportFileToSplunk({ ...options, endpoint: 'http://127.0.0.1:8088/services/collector/event' }), 0);
+  await assert.rejects(() => exportFileToSplunk({ ...options, endpoint: 'http://127.0.0.1:8088/services/collector/event?token=bad' }));
   console.log('Splunk HEC export, acknowledgement and retry cursor passed');
 } finally {
   fs.rmSync(dir, { recursive: true, force: true });
