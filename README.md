@@ -49,7 +49,7 @@
 
 La arquitectura de seguridad está diseñada por fases incrementales:
 1. **Fase 1 (Implementada y Verificable)**: Endurecimiento de acceso HTTP, autenticación obligatoria previa a la recepción de ficheros (`requireUploadAuth`), cuotas horarias de generación, origen exacto, aislamiento multi-inquilino y registro local estructurado de telemetría en JSONL con identificadores unívocos por petición (`X-Request-ID`).
-2. **Fase 2 (En curso)**: Jev conectado opcionalmente en modo observación mediante la API de TypeSafe. La ingesta en Splunk y el borde con TLS/WAF siguen pendientes de infraestructura.
+2. **Fase 2 (En curso)**: Jev conectado opcionalmente en modo observación mediante la API de TypeSafe; exportador local opcional a Splunk HEC. El destino Splunk y el borde con TLS/WAF siguen pendientes de infraestructura.
 
 Todo el código está unificado en **TypeScript** bajo estándares de tipo estricto, sin requerir intérpretes híbridos de Python en el entorno productivo.
 
@@ -124,6 +124,7 @@ Para conocer en detalle la hoja de ruta y la especificación de integración con
 
 - 📖 **[Arquitectura de Seguridad Real y Fases](docs/SECURITY_ARCHITECTURE.md)**: Detalla el estado verificable actual frente a los requerimientos para entornos expuestos (WAF, TLS, VPN administrativa, almacenamiento distribuido y retención en SIEM).
 - 🤝 **[Integración Jev](docs/JEV_DECISION_CONTRACT.md)**: Describe la llamada real a TypeSafe, el score de severidad, el umbral de revisión y sus límites operativos.
+- 📤 **[Exportación a Splunk HEC](docs/SPLUNK_EXPORT.md)**: Explica la configuración, ejecución, cursor y semántica de entrega.
 
 > [!NOTE]
 > Jev se activa al configurar `TYPESAFE_API_KEY`; sin esa clave no se realizan llamadas. WAF y Splunk siguen sin desplegarse.
@@ -294,6 +295,8 @@ Configura el archivo `backend/.env` con los siguientes parámetros:
 | `GENERATION_HOURLY_LIMIT` | Integer | Cuota máxima horaria de generaciones por usuario | `20` |
 | `TELEMETRY_FILE` | String | Ruta del archivo de eventos JSONL | `./data/security-events.jsonl` |
 | `TYPESAFE_API_KEY` | String | Activa la evaluación opcional de Jev en modo observación | *Credencial secreta (fuera de Git)* |
+| `SPLUNK_HEC_URL` | URL HTTPS | Destino HEC para `npm run siem:export` | `https://splunk.example.com/services/collector/event` |
+| `SPLUNK_HEC_TOKEN` | String | Token de ingesta HEC | *Credencial secreta (fuera de Git)* |
 
 ---
 

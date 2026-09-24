@@ -32,7 +32,7 @@ flowchart LR
 
 1. **Borde público:** TLS, WAF, protección DDoS, control de red y VPN administrativa dependen del despliegue. No son funciones de Express y no están configurados aquí. La VPN del diagrama correspondería al acceso administrativo, no al flujo público de clientes.
 2. **Sesiones y límites:** SQLite y el rate limiter local requieren diseño de producción si se despliega en varias réplicas. El acceso público necesita HTTPS y `COOKIE_SECURE=true`.
-3. **Telemetría:** `backend/data/security-events.jsonl` es local y está excluido de Git. No hay transporte ni retención central. En producción se debe enviar con un agente seguro a un SIEM y definir retención y acceso.
+3. **Telemetría:** `backend/data/security-events.jsonl` es local y está excluido de Git. Existe un [exportador opcional a Splunk HEC](SPLUNK_EXPORT.md), sin destino ni token configurados. Falta programarlo, monitorearlo y definir retención y acceso.
 4. **Disponibilidad:** archivos e imágenes residen en disco local; faltan respaldo, almacenamiento compartido y política de cuotas por usuario.
 5. **Secretos:** la credencial Foundry debe rotarse si fue expuesta en algún archivo previo, almacenarse en un gestor de secretos y jamás subirse a Git. No se ha verificado la rotación.
 6. **Validación:** falta una prueba de despliegue real con TLS, proxy, WAF y el proveedor. La compilación y pruebas locales no certifican seguridad de producción.
@@ -40,7 +40,7 @@ flowchart LR
 ## Fases siguientes
 
 1. **Borde y operación:** fijar dominio, TLS, `APP_ORIGIN`, cookie segura, proxy de confianza controlado, WAF y límites compartidos; probar con el despliegue real.
-2. **Visibilidad:** definir retención y transporte del JSONL, ingesta en Splunk, paneles de login fallido, 403, 429, errores Foundry y volumen de generación. Alertas basadas en datos reales.
+2. **Visibilidad:** configurar el exportador HEC, definir retención, programar su ejecución y crear en Splunk paneles de login fallido, 403, 429, errores Foundry y volumen de generación. Alertas basadas en datos reales.
 3. **Jev:** la integración inicial está en modo observación según [JEV_DECISION_CONTRACT.md](JEV_DECISION_CONTRACT.md). Calibrar con incidentes reales y revisión humana antes de aplicar bloqueos.
 
 Cada fase debe tener commit y evidencia de prueba propios. No se debe activar una respuesta automática antes de medir falsos positivos y disponer de reversión.
