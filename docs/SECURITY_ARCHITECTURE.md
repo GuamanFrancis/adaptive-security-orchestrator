@@ -27,11 +27,12 @@ flowchart LR
 - Eventos de seguridad JSONL locales con `request_id`, resultado y etiquetas. No contienen prompts, credenciales, cookies ni contenido de imagen.
 - Evaluación opcional con Jev de patrones de fallos; sólo genera recomendaciones de observación o revisión, sin bloqueos automáticos.
 - Mensajes genéricos ante errores de parámetros devueltos por Foundry.
+- Carga central de `backend/.env` antes de inicializar autenticación y orígenes. En producción el servidor no inicia sin `APP_ORIGIN` HTTPS y `COOKIE_SECURE=true`.
 
 ## Límites y riesgos pendientes
 
 1. **Borde público:** TLS, WAF, protección DDoS, control de red y VPN administrativa dependen del despliegue. No son funciones de Express y no están configurados aquí. La VPN del diagrama correspondería al acceso administrativo, no al flujo público de clientes.
-2. **Sesiones y límites:** SQLite y el rate limiter local requieren diseño de producción si se despliega en varias réplicas. El acceso público necesita HTTPS y `COOKIE_SECURE=true`.
+2. **Sesiones y límites:** SQLite y el rate limiter local requieren diseño de producción si se despliega en varias réplicas. El servidor exige `APP_ORIGIN` HTTPS y `COOKIE_SECURE=true` en producción, pero el proxy TLS sigue siendo una responsabilidad del despliegue.
 3. **Telemetría:** `backend/data/security-events.jsonl` es local y está excluido de Git. Existe un [exportador opcional a Splunk HEC](SPLUNK_EXPORT.md), sin destino ni token configurados. Falta programarlo, monitorearlo y definir retención y acceso.
 4. **Disponibilidad:** archivos e imágenes residen en disco local; faltan respaldo, almacenamiento compartido y política de cuotas por usuario.
 5. **Secretos:** la credencial Foundry debe rotarse si fue expuesta en algún archivo previo, almacenarse en un gestor de secretos y jamás subirse a Git. No se ha verificado la rotación.

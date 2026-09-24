@@ -298,6 +298,8 @@ Configura el archivo `backend/.env` con los siguientes parámetros:
 | `SPLUNK_HEC_URL` | URL HTTPS | Destino HEC para `npm run siem:export` | `https://splunk.example.com/services/collector/event` |
 | `SPLUNK_HEC_TOKEN` | String | Token de ingesta HEC | *Credencial secreta (fuera de Git)* |
 
+En `NODE_ENV=production`, el backend valida al arrancar que `APP_ORIGIN` sea un origen HTTPS y que `COOKIE_SECURE=true`. `backend/.env` se carga antes de crear los middlewares y las sesiones.
+
 ---
 
 ## 🔌 Referencia de la API

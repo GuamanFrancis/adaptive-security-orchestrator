@@ -1,14 +1,6 @@
-import dotenv from 'dotenv';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ROOT = path.resolve(__dirname, '../../');
+import './config.js';
 
 export function getFoundryCredentials(): { apiKey: string; endpoint: string } {
-  dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
-  dotenv.config({ path: path.join(ROOT, '.env'), override: true });
   const apiKey = process.env.FOUNDRY_API_KEY || process.env.AZURE_API_KEY || '';
   const endpoint = process.env.FOUNDRY_ENDPOINT || process.env.AZURE_FLUX_ENDPOINT || '';
   return { apiKey, endpoint };

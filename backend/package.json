@@ -10,7 +10,7 @@
     "start": "node dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "test": "tsx tests/server.test.ts && tsx tests/jev.test.ts && tsx tests/splunk.test.ts",
+    "test": "tsx tests/server.test.ts && tsx tests/jev.test.ts && tsx tests/splunk.test.ts && tsx tests/config.test.ts",
     "siem:export": "tsx src/splunkExport.ts"
   },
   "dependencies": {

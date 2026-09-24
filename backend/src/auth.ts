@@ -1,3 +1,4 @@
+import './config.js';
 import crypto from 'node:crypto';
 import { Request, Response } from 'express';
 import { prisma } from './db.js';

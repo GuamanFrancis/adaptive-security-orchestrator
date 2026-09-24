@@ -1,3 +1,4 @@
+import { validateProductionConfig } from './config.js';
 import express, { Request, Response, NextFunction } from 'express';
 import cookieParser from 'cookie-parser';
 import multer from 'multer';
@@ -563,6 +564,7 @@ const isDirectRun =
   Boolean(process.argv[1] && /index\.(ts|js)$/.test(process.argv[1]));
 
 if (isDirectRun) {
+  validateProductionConfig();
   app.listen(PORT, '127.0.0.1', () => {
     console.log(`🚀 Flux Secure Studio Node.js server running at http://127.0.0.1:${PORT}`);
     console.log(`📡 Foundry Configured: ${isFoundryConfigured()}`);

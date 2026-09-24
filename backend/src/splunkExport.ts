@@ -2,10 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import readline from 'node:readline';
-import dotenv from 'dotenv';
+import { backendDir } from './config.js';
 
-const backendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-dotenv.config({ path: path.join(backendDir, '.env') });
 
 export interface ExportOptions {
   inputPath: string;

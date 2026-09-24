@@ -1,12 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import dotenv from 'dotenv';
+import { backendDir } from './config.js';
 import type { SecurityEvent } from './telemetry.js';
 
 const ENDPOINT = 'https://api.typesafe.ai/v1/systemone';
-const backendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-dotenv.config({ path: path.join(backendDir, '.env') });
 const decisionPath = process.env.JEV_DECISIONS_FILE || path.join(backendDir, 'data/jev-decisions.jsonl');
 const WINDOW_MS = 10 * 60_000;
 const COOLDOWN_MS = 60_000;
