@@ -143,4 +143,4 @@ scripts/                     Utilidades para el laboratorio local
 
 ## Licencia
 
-Este repositorio no incluye actualmente un archivo de licencia. Consulta con el propietario antes de reutilizar o distribuir el código fuera de la evaluación del proyecto.
+Distribuido bajo la [licencia MIT](LICENSE). Se permite usar, modificar y distribuir el código conforme a sus términos, conservando el aviso de copyright y la licencia.
